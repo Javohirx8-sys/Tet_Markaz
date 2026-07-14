@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boyqozon ETK - Xodim Nazorati</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: #f0f2f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        h2 { margin-top: 0; color: #2c3e50; }
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:hover { background: #219653; }
+        .btn-stop {
+            background: #c0392b;
+            margin-top: 10px;
+            display: none;
+        }
+        .btn-stop:hover { background: #a32a1e; }
+        #gpsStatus {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Xodim ma'lumotlari -->
+    <div class="card">
+        <h2>Xodim Interfeysi</h2>
+        <p><strong>Sizning IDingiz:</strong> <span id="userId">XODIM_01</span></p>
+        <p><strong>Telefoningiz:</strong> +99890 123-45-67</p>
+        <p><strong>Biriktirilgan hudud:</strong> Boyqozon MFY</p>
+    </div>
+
+    <!-- GPS boshqaruvi -->
+    <div class="card">
+        <h3>Nazorat Safarini Boshlash</h3>
+        <p><small style="color: #7f8c8d;">Safar davomida GPS joylashuvingiz rahbar xaritasida avtomatik ravishda yangilanib turadi.</small></p>
+        <button class="btn" id="startBtn" onclick="startTracking()">Navbatchilikni boshlash</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopTracking()">Navbatchilikni yakunlash</button>
+        <div id="gpsStatus">Hozircha GPS faol emas.</div>
+    </div>
+
+    <script>
+        let watchId = null;
+
+        function startTracking() {
+            if ("geolocation" in navigator) {
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'block';
+                document.getElementById('gpsStatus').innerText = "GPS signal qidirilmoqda...";
+
+                // Brauzerning bepul GPS datchigidan koordinata olish
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        document.getElementById('gpsStatus').innerHTML = 
+                            `Jonli koordinatalar aniqlandi:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
+                        
+                        // Kelgusi qadamda bu koordinatalarni bazaga yuboramiz
+                        console.log("GPS uzatildi:", lat, lng);
+                    },
+                    (error) => {
+                        document.getElementById('gpsStatus').innerText = "GPS xatoligi: Joylashuv ruxsatini bering!";
+                        stopTracking();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                alert("Smartfoningizda GPS tizimi aniqlanmadi.");
+            }
+        }
+
+        function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('gpsStatus').innerText = "Navbatchilik yakunlandi. GPS o'chirildi.";
+        }
+    </script>
+</body>
+</html>
