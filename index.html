@@ -3,85 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boyqozon ETK - Rahbar Paneli</title>
+    <title>Boyqozon ETK - Professional Boshqaruv Tizimi</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { box-sizing: border-box; }
-        html, body {
-            margin: 0; padding: 0;
-            height: 100%; width: 100%;
-            font-family: Arial, sans-serif;
-            display: flex;
+        :root {
+            --bg-color: #f4f6f9;
+            --sidebar-bg: #2c3e50;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --border-color: #ddd;
         }
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --sidebar-bg: #111b24;
+            --text-color: #f4f6f9;
+            --card-bg: #242f3d;
+            --border-color: #444;
+        }
+        * { box-sizing: border-box; transition: background 0.3s, color 0.3s; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: var(--bg-color); color: var(--text-color); }
+        
+        /* Splash / Yuklanish animatsiyasi */
+        #splash-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: #2c3e50;
+            z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #1abc9c;
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Admin Login */
+        #admin-login-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg-color);
+            z-index: 9998; display: none; justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); width: 350px; text-align: center;
+        }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); }
+        .login-box button { width: 100%; padding: 12px; background: #1abc9c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        /* Asosiy Interfeys */
         #sidebar {
-            width: 340px; background: #2c3e50; color: white;
+            width: 380px; background: var(--sidebar-bg); color: white;
             padding: 15px; display: flex; flex-direction: column;
-            overflow-y: auto; height: 100vh; flex-shrink: 0;
+            overflow-y: auto; height: 100vh; flex-shrink: 0; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
         }
-        #map { flex-grow: 1; height: 100vh; background-color: #e5e9f0; }
-        h2, h3 { margin-top: 0; border-bottom: 2px solid #34495e; padding-bottom: 8px; }
-        h3 { font-size: 16px; margin-top: 15px; }
-        .form-group { margin-bottom: 10px; }
-        .form-group label { display: block; font-size: 12px; margin-bottom: 3px; color: #bdc3c7; }
-        .form-group input {
-            width: 100%; padding: 8px; border: none;
-            border-radius: 4px; background: #34495e; color: white;
-        }
-        .btn-add {
-            width: 100%; padding: 10px; background: #1abc9c;
-            border: none; color: white; font-weight: bold;
-            border-radius: 4px; cursor: pointer; margin-top: 5px;
-        }
-        .btn-add:hover { background: #16a085; }
-        #xodimlar-list {
-            margin-top: 15px; flex-grow: 1;
-        }
-        .xodim-item {
-            background: #34495e; padding: 10px;
-            border-radius: 6px; margin-bottom: 8px; font-size: 13px;
-        }
-        .status-badge {
-            display: inline-block; padding: 2px 6px;
-            border-radius: 4px; font-size: 11px; font-weight: bold;
-            margin-top: 5px;
-        }
+        #map { flex-grow: 1; height: 100vh; }
+        
+        .tab-buttons { display: flex; margin-bottom: 15px; gap: 5px; }
+        .tab-btn { flex: 1; padding: 10px; background: #34495e; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .tab-btn.active { background: #1abc9c; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .form-group { margin-bottom: 8px; }
+        .form-group label { display: block; font-size: 11px; margin-bottom: 2px; color: #bdc3c7; }
+        .form-group input { width: 100%; padding: 6px; border: none; border-radius: 4px; background: #34495e; color: white; }
+        
+        .btn-action { width: 100%; padding: 8px; background: #1abc9c; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-danger { background: #e74c3c; }
+        .btn-warning { background: #f39c12; }
+
+        .xodim-item { background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 8px; position: relative; }
+        .status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .status-online { background: #27ae60; color: white; }
         .status-offline { background: #7f8c8d; color: white; }
+
+        /* Chat Oynasi */
+        .chat-container { display: flex; flex-direction: column; height: 250px; background: #1f2d3d; border-radius: 6px; padding: 10px; }
+        .chat-messages { flex-grow: 1; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 5px; }
+        .chat-msg { padding: 6px; border-radius: 4px; max-width: 80%; }
+        .msg-in { background: #34495e; align-self: flex-start; }
+        .msg-out { background: #1abc9c; align-self: flex-end; }
+        .chat-input-area { display: flex; gap: 5px; margin-top: 5px; }
+        .chat-input-area input { flex-grow: 1; padding: 6px; border: none; border-radius: 4px; background: #2c3e50; color: white; }
+
+        /* Kun/Tun Rejimi tugmasi */
+        .theme-toggle { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .dark-mode .theme-toggle { background: #222; color: white; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h2>Boyqozon ETK</h2>
-        <p><b>Rahbar:</b> ID-ADMIN-01</p>
-        
-        <!-- XODIM QO'SHISH FORMASI -->
-        <h3>➕ Yangi Xodim Qo'shish</h3>
-        <div class="form-group">
-            <label>Xodim ID (masalan: XODIM_02)</label>
-            <input type="text" id="newId" placeholder="XODIM_02">
-        </div>
-        <div class="form-group">
-            <label>Ism va Familiya</label>
-            <input type="text" id="newName" placeholder="Ali Valiyev">
-        </div>
-        <div class="form-group">
-            <label>Telefon raqam</label>
-            <input type="text" id="newTel" placeholder="+998901234567">
-        </div>
-        <div class="form-group">
-            <label>Kirish Logini</label>
-            <input type="text" id="newLogin" placeholder="ali99">
-        </div>
-        <div class="form-group">
-            <label>Parol</label>
-            <input type="password" id="newParol" placeholder="parol123">
-        </div>
-        <button class="btn-add" onclick="addNewXodim()">Bazaga Qo'shish</button>
+    <!-- Yuklanish Animatsiyasi -->
+    <div id="splash-screen">
+        <div class="spinner"></div>
+        <h1 style="margin: 0; font-size: 24px; letter-spacing: 2px;">BOYQOZON TIZIMI</h1>
+        <p style="color: #bdc3c7;">Markaziy boshqaruv paneli yuklanmoqda...</p>
+    </div>
 
-        <!-- JONLI XODIMLAR RO'YXATI -->
-        <h3>👥 Xodimlar Nazorati (GPS)</h3>
-        <div id="xodimlar-list">Xodimlar yuklanmoqda...</div>
+    <!-- Admin Login -->
+    <div id="admin-login-screen">
+        <div class="login-box">
+            <h2>Admin Kirish</h2>
+            <input type="text" id="adminUser" placeholder="Login">
+            <input type="password" id="adminPass" placeholder="Parol">
+            <button onclick="tryAdminLogin()">Tizimga kirish</button>
+            <p id="loginErr" style="color:red; display:none; font-size:12px; margin-top:10px;"></p>
+        </div>
+    </div>
+
+    <div class="theme-toggle" onclick="toggleTheme()">🌓</div>
+
+    <div id="sidebar">
+        <h2>Boyqozon ETK Admin</h2>
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('monitoring')">Kuzatish</button>
+            <button class="tab-btn" onclick="switchTab('xodimlar')">Xodimlar (CRUD)</button>
+            <button class="tab-btn" onclick="switchTab('reja')">Reja/Safar</button>
+        </div>
+
+        <!-- 1. MONITORING TAB -->
+        <div id="tab-monitoring" class="tab-content active">
+            <h3>👥 Jonli Xodimlar</h3>
+            <div id="xodimlar-list">Yuklanmoqda...</div>
+            
+            <h3>💬 Jonli Muloqot (Chat)</h3>
+            <div class="form-group">
+                <label>Xodimni tanlang</label>
+                <select id="chatXodimSelect" onchange="loadChat()" style="width:100%; padding:6px; background:#34495e; color:white; border:none; border-radius:4px;"></select>
+            </div>
+            <div class="chat-container">
+                <div class="chat-messages" id="chat-messages-box"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Xabar yo'llang...">
+                    <button class="btn-action" style="width:auto;" onclick="sendAdminMessage()">↗</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. XODIMLAR TAB -->
+        <div id="tab-xodimlar" class="tab-content">
+            <h3 id="form-title">➕ Yangi Xodim Qo'shish</h3>
+            <input type="hidden" id="editXodimId">
+            <div class="form-group">
+                <label>Xodim ID</label>
+                <input type="text" id="newId" placeholder="XODIM_02">
+            </div>
+            <div class="form-group">
+                <label>Ism va Familiya</label>
+                <input type="text" id="newName" placeholder="Ali Valiyev">
+            </div>
+            <div class="form-group">
+                <label>Telefon raqam</label>
+                <input type="text" id="newTel" placeholder="+998901234567">
+            </div>
+            <div class="form-group">
+                <label>Kirish Logini</label>
+                <input type="text" id="newLogin" placeholder="ali99">
+            </div>
+            <div class="form-group">
+                <label>Parol</label>
+                <input type="password" id="newParol" placeholder="parol123">
+            </div>
+            <button class="btn-action" id="btn-submit" onclick="saveXodim()">Bazaga Saqlash</button>
+            <button class="btn-action btn-danger" id="btn-cancel" style="display:none; margin-top:5px;" onclick="resetForm()">Bekor qilish</button>
+            
+            <h3 style="margin-top:20px;">Xodimlar Ro'yxati</h3>
+            <div id="crud-xodimlar-list"></div>
+        </div>
+
+        <!-- 3. REJA / MARSHRUT TAB -->
+        <div id="tab-reja" class="tab-content">
+            <h3>📍 Xodimga Reja (Marshrut) berish</h3>
+            <p style="font-size:11px; color:#bdc3c7;">Xaritani bosing va xodimga tartib bilan A, B, C... nuqtalarini belgilang.</p>
+            <div class="form-group">
+                <label>Xodimni tanlang</label>
+                <select id="routeXodimSelect" style="width:100%; padding:6px; background:#34495e; color:white; border:none; border-radius:4px;"></select>
+            </div>
+            <button class="btn-action btn-warning" onclick="clearTempRoute()">Yo'nalishni tozalash</button>
+            <button class="btn-action" style="margin-top:5px; background:#2ecc71;" onclick="saveRouteToDb()">Rejani Saqlash va Xodimga yuborish</button>
+            
+            <h4 style="margin-top:15px; border-bottom: 1px solid #34495e;">Kutilayotgan nuqtalar:</h4>
+            <ul id="temp-points-list" style="font-size:12px; padding-left:20px;"></ul>
+        </div>
     </div>
 
     <div id="map"></div>
@@ -94,129 +193,261 @@
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const map = L.map('map').setView([41.295, 69.695], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        // Splash animatsiyani 1.5 soniyadan so'ng o'chirish
+        setTimeout(() => {
+            document.getElementById('splash-screen').style.display = 'none';
+            document.getElementById('admin-login-screen').style.display = 'flex';
+        }, 1500);
 
-        // Transformatorlar markerlari
-        const transformatorlar = [
-            { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692 },
-            { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698 },
-            { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695 }
-        ];
-        transformatorlar.forEach(tp => {
-            L.marker([tp.lat, tp.lng]).addTo(map).bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
-        });
+        // Admin login tekshiruvi
+        function tryAdminLogin() {
+            const user = document.getElementById('adminUser').value;
+            const pass = document.getElementById('adminPass').value;
+            if (user === 'admin' && pass === 'admin123') {
+                document.getElementById('admin-login-screen').style.display = 'none';
+                initSystem();
+            } else {
+                document.getElementById('loginErr').innerText = "Xato parol!";
+                document.getElementById('loginErr').style.display = 'block';
+            }
+        }
 
-        // Xodimlarning markerlari va chiziqlarini saqlash uchun obektlar
-        let activeMarkers = {};
-        let activePaths = {};
+        let map, activeMarkers = {}, activePaths = {}, routeMarkers = [];
+        let tempRoutePoints = [];
 
-        // 1. Yangi xodim qo'shish funksiyasi
-        async function addNewXodim() {
+        function initSystem() {
+            map = L.map('map').setView([41.295, 69.695], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            // Reja qo'shish uchun xaritada click hodisasi
+            map.on('click', function(e) {
+                const currentTab = document.querySelector('.tab-btn.active').innerText;
+                if (currentTab === 'Reja/Safar') {
+                    const charCode = 65 + tempRoutePoints.length; // A, B, C...
+                    const label = String.fromCharCode(charCode);
+                    const point = { label, lat: e.latlng.lat, lng: e.latlng.lng };
+                    tempRoutePoints.push(point);
+                    
+                    // Xaritada vaqtinchalik marker chizish
+                    const m = L.marker(e.latlng, {
+                        icon: L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background:#f1c40f; color:black; font-weight:bold; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:2px solid black;">${label}</div>`,
+                            iconSize: [24, 24]
+                        })
+                    }).addTo(map);
+                    routeMarkers.push(m);
+                    updateTempPointsList();
+                }
+            });
+
+            fetchXodimlar();
+            setInterval(fetchXodimlar, 3000);
+            setInterval(loadChat, 4000);
+        }
+
+        // Tab almashtirish
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(cont => cont.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            clearTempRoute();
+        }
+
+        function updateTempPointsList() {
+            const list = document.getElementById('temp-points-list');
+            list.innerHTML = tempRoutePoints.map(p => `<li>Nuqta <b>${p.label}</b>: (${p.lat.toFixed(4)}, ${p.lng.toFixed(4)})</li>`).join('');
+        }
+
+        function clearTempRoute() {
+            tempRoutePoints = [];
+            routeMarkers.forEach(m => map.removeLayer(m));
+            routeMarkers = [];
+            updateTempPointsList();
+        }
+
+        // Xodimlar ro'yxati va ularni boshqarish
+        let globalXodimlarList = [];
+        async function fetchXodimlar() {
+            try {
+                const { data: xodimlar, error } = await supabaseClient.from('xodimlar_gps').select('*');
+                if (error) throw error;
+                globalXodimlarList = xodimlar;
+
+                // Selectlarni to'ldirish
+                const chatSelect = document.getElementById('chatXodimSelect');
+                const routeSelect = document.getElementById('routeXodimSelect');
+                const prevChatVal = chatSelect.value;
+                const prevRouteVal = routeSelect.value;
+
+                chatSelect.innerHTML = '';
+                routeSelect.innerHTML = '';
+                xodimlar.forEach(x => {
+                    const opt = `<option value="${x.id}">${x.ism}</option>`;
+                    chatSelect.innerHTML += opt;
+                    routeSelect.innerHTML += opt;
+                });
+                if (prevChatVal) chatSelect.value = prevChatVal;
+                if (prevRouteVal) routeSelect.value = prevRouteVal;
+
+                // Monitoring Ro'yxati
+                const listDiv = document.getElementById('xodimlar-list');
+                listDiv.innerHTML = '';
+                xodimlar.forEach(xodim => {
+                    const isOnline = xodim.status === 'online';
+                    listDiv.innerHTML += `
+                        <div class="xodim-item">
+                            <b>${xodim.ism}</b> (ID: ${xodim.id})<br>
+                            <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}">${xodim.status.toUpperCase()}</span>
+                        </div>
+                    `;
+                    
+                    // Jonli xodim markerini yangilash
+                    if (isOnline && xodim.lat && xodim.lng) {
+                        const pos = [xodim.lat, xodim.lng];
+                        if (activeMarkers[xodim.id]) {
+                            activeMarkers[xodim.id].setLatLng(pos);
+                        } else {
+                            activeMarkers[xodim.id] = L.circleMarker(pos, {color: '#e74c3c', fillOpacity: 1, radius: 9}).addTo(map).bindPopup(`<b>${xodim.ism}</b>`);
+                        }
+                    } else {
+                        if (activeMarkers[xodim.id]) { map.removeLayer(activeMarkers[xodim.id]); delete activeMarkers[xodim.id]; }
+                    }
+                });
+
+                // CRUD Ro'yxati
+                const crudList = document.getElementById('crud-xodimlar-list');
+                crudList.innerHTML = xodimlar.map(x => `
+                    <div class="xodim-item">
+                        <b>${x.ism}</b> (Login: ${x.login})
+                        <div style="margin-top:5px; display:flex; gap:5px;">
+                            <button class="btn-action btn-warning" style="padding:4px;" onclick="editXodim('${x.id}')">Tahrirlash</button>
+                            <button class="btn-action btn-danger" style="padding:4px;" onclick="deleteXodim('${x.id}')">O'chirish</button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) { console.error(err); }
+        }
+
+        // Xodim Qo'shish / Yangilash
+        async function saveXodim() {
             const id = document.getElementById('newId').value.trim();
             const ism = document.getElementById('newName').value.trim();
             const tel = document.getElementById('newTel').value.trim();
             const login = document.getElementById('newLogin').value.trim();
             const parol = document.getElementById('newParol').value.trim();
+            const editId = document.getElementById('editXodimId').value;
 
-            if (!id || !ism || !login || !parol) {
-                alert("Iltimos, barcha maydonlarni to'ldiring!");
-                return;
-            }
+            if (!id || !ism || !login || !parol) { alert("Barcha maydonlarni to'ldiring!"); return; }
 
-            const { error } = await supabaseClient
-                .from('xodimlar_gps')
-                .insert([{ id, ism, tel, login, parol, status: 'offline' }]);
-
-            if (error) {
-                alert("Xatolik yuz berdi: " + error.message);
+            if (editId) {
+                // Tahrirlash (UPDATE)
+                await supabaseClient.from('xodimlar_gps').update({ id, ism, tel, login, parol }).eq('id', editId);
+                alert("Xodim tahrirlandi!");
             } else {
-                alert(`${ism} muvaffaqiyatli qo'shildi!`);
-                // Formani tozalash
-                document.getElementById('newId').value = '';
-                document.getElementById('newName').value = '';
-                document.getElementById('newTel').value = '';
-                document.getElementById('newLogin').value = '';
-                document.getElementById('newParol').value = '';
+                // Yangi qo'shish
+                await supabaseClient.from('xodimlar_gps').insert([{ id, ism, tel, login, parol }]);
+                alert("Yangi xodim qo'shildi!");
+            }
+            resetForm();
+            fetchXodimlar();
+        }
+
+        function editXodim(id) {
+            const x = globalXodimlarList.find(item => item.id === id);
+            if (x) {
+                document.getElementById('editXodimId').value = x.id;
+                document.getElementById('newId').value = x.id;
+                document.getElementById('newId').disabled = true; // ID tahrirlanmaydi
+                document.getElementById('newName').value = x.ism;
+                document.getElementById('newTel').value = x.tel || '';
+                document.getElementById('newLogin').value = x.login;
+                document.getElementById('newParol').value = x.parol;
+
+                document.getElementById('form-title').innerText = "✏️ Xodimni Tahrirlash";
+                document.getElementById('btn-cancel').style.display = 'block';
+            }
+        }
+
+        async function deleteXodim(id) {
+            if (confirm("Ushbu xodimni butunlay o'chirmoqchimisiz?")) {
+                await supabaseClient.from('xodimlar_gps').delete().eq('id', id);
                 fetchXodimlar();
             }
         }
 
-        // 2. Barcha xodimlarni bazadan olib xaritada yangilash
-        async function fetchXodimlar() {
-            try {
-                const { data: xodimlar, error } = await supabaseClient
-                    .from('xodimlar_gps')
-                    .select('*');
+        function resetForm() {
+            document.getElementById('editXodimId').value = '';
+            document.getElementById('newId').value = '';
+            document.getElementById('newId').disabled = false;
+            document.getElementById('newName').value = '';
+            document.getElementById('newTel').value = '';
+            document.getElementById('newLogin').value = '';
+            document.getElementById('newParol').value = '';
+            document.getElementById('form-title').innerText = "➕ Yangi Xodim Qo'shish";
+            document.getElementById('btn-cancel').style.display = 'none';
+        }
 
-                if (error) throw error;
+        // Rejani saqlash
+        async function saveRouteToDb() {
+            const xId = document.getElementById('routeXodimSelect').value;
+            if (!xId) { alert("Xodim tanlanmagan!"); return; }
+            if (tempRoutePoints.length === 0) { alert("Hech qanday nuqta belgilamadingiz!"); return; }
 
-                const listDiv = document.getElementById('xodimlar-list');
-                listDiv.innerHTML = '';
+            // Avvalgi eski rejalarni o'chiramiz
+            await supabaseClient.from('vazifalar').delete().eq('xodim_id', xId);
 
-                xodimlar.forEach(xodim => {
-                    // Sidebar ro'yxatini yaratish
-                    const item = document.createElement('div');
-                    item.className = 'xodim-item';
-                    const isOnline = xodim.status === 'online';
-                    const badgeClass = isOnline ? 'status-online' : 'status-offline';
-                    
-                    item.innerHTML = `
-                        <b>ID:</b> ${xodim.id}<br>
-                        <b>Ism:</b> ${xodim.ism}<br>
-                        <b>Tel:</b> ${xodim.tel || 'Kiritilmagan'}<br>
-                        <span class="status-badge ${badgeClass}">${xodim.status.toUpperCase()}</span>
-                    `;
-                    listDiv.appendChild(item);
+            const inserts = tempRoutePoints.map(p => ({
+                xodim_id: xId,
+                nuqta_nomi: p.label,
+                lat: p.lat,
+                lng: p.lng,
+                bajarildi: false
+            }));
 
-                    // Xaritadagi markerlarni boshqarish
-                    if (isOnline && xodim.lat && xodim.lng) {
-                        const pos = [xodim.lat, xgrid = xodim.lng];
-                        
-                        // Agar marker allaqachon xaritada bo'lsa, joyini yangilaymiz
-                        if (activeMarkers[xodim.id]) {
-                            activeMarkers[xodim.id].setLatLng(pos);
-                        } else {
-                            // Yangi marker yaratamiz
-                            activeMarkers[xodim.id] = L.circleMarker(pos, {
-                                color: '#e74c3c', fillColor: '#e74c3c', fillOpacity: 1, radius: 9
-                            }).addTo(map).bindPopup(`<b>${xodim.ism}</b><br>ID: ${xodim.id}`);
-                        }
+            const { error } = await supabaseClient.from('vazifalar').insert(inserts);
+            if (error) alert("Xato: " + error.message);
+            else { alert("Reja muvaffaqiyatli saqlandi va xodimga yuborildi!"); clearTempRoute(); }
+        }
 
-                        // Marshrut chizig'ini yangilash
-                        if (!activePaths[xodim.id]) {
-                            activePaths[xodim.id] = L.polyline([], {color: '#2980b9', weight: 4}).addTo(map);
-                        }
-                        // Chiziqqa nuqta qo'shish
-                        const currentPath = activePaths[xodim.id].getLatLngs();
-                        const lastPoint = currentPath[currentPath.length - 1];
-                        if (!lastPoint || lastPoint.lat !== xodim.lat || lastPoint.lng !== xodim.lng) {
-                            activePaths[xodim.id].addLatLng(pos);
-                        }
+        // Chat yuklash
+        async function loadChat() {
+            const xId = document.getElementById('chatXodimSelect').value;
+            if (!xId) return;
+            const { data, error } = await supabaseClient.from('chat_messages')
+                .select('*')
+                .or(`sender_id.eq.${xId},receiver_id.eq.${xId}`)
+                .order('created_at', { ascending: true });
 
-                    } else {
-                        // Agar xodim offline bo'lsa, uning markerini va chizig'ini xaritadan o'chiramiz
-                        if (activeMarkers[xodim.id]) {
-                            map.removeLayer(activeMarkers[xodim.id]);
-                            delete activeMarkers[xodim.id];
-                        }
-                        if (activePaths[xodim.id]) {
-                            map.removeLayer(activePaths[xodim.id]);
-                            delete activePaths[xodim.id];
-                        }
-                    }
-                });
-
-            } catch (err) {
-                console.error("Xodimlarni yuklashda xatolik:", err);
+            if (!error && data) {
+                const box = document.getElementById('chat-messages-box');
+                box.innerHTML = data.map(m => `
+                    <div class="chat-msg ${m.sender_id === 'admin' ? 'msg-out' : 'msg-in'}">
+                        ${m.message}
+                    </div>
+                `).join('');
+                box.scrollTop = box.scrollHeight;
             }
         }
 
-        // Har 3 soniyada xodimlarni yangilab turamiz
-        setInterval(fetchXodimlar, 3000);
-        fetchXodimlar();
+        async function sendAdminMessage() {
+            const xId = document.getElementById('chatXodimSelect').value;
+            const msg = document.getElementById('chatInput').value.trim();
+            if (!xId || !msg) return;
+
+            await supabaseClient.from('chat_messages').insert([{ sender_id: 'admin', receiver_id: xId, message: msg }]);
+            document.getElementById('chatInput').value = '';
+            loadChat();
+        }
+
+        // Kun/Tun rejimi
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
     </script>
 </body>
 </html>
