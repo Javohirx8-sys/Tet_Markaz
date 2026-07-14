@@ -3,102 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boyqozon ETK - Xodim Nazorati</title>
+    <title>Boyqozon ETK - Xodim Tizimi</title>
     <style>
         * { box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 15px;
-            background: #f0f2f5;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background: #f0f2f5; }
         .card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px;
         }
         h2 { margin-top: 0; color: #2c3e50; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; }
+        .input-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
         .btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 15px;
-            width: 100%;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
+            background: #27ae60; color: white; border: none; padding: 15px;
+            width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
         }
         .btn:hover { background: #219653; }
-        .btn-stop {
-            background: #c0392b;
-            margin-top: 10px;
-            display: none;
-        }
+        .btn-stop { background: #c0392b; margin-top: 10px; display: none; }
         .btn-stop:hover { background: #a32a1e; }
-        #gpsStatus {
-            color: #7f8c8d;
-            font-size: 14px;
-            margin-top: 12px;
-            font-weight: bold;
-        }
+        #gpsStatus { color: #7f8c8d; font-size: 14px; margin-top: 12px; font-weight: bold; }
+        
+        /* Ekranlarni almashtirish */
+        #login-screen { display: block; }
+        #work-screen { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Xodim Interfeysi</h2>
-        <p><strong>Sizning IDingiz:</strong> <span id="userId">XODIM_01</span></p>
-        <p><strong>Telefoningiz:</strong> +99890 123-45-67</p>
-        <p><strong>Biriktirilgan hudud:</strong> Boyqozon MFY</p>
+    <!-- 1. LOGIN EKRANI -->
+    <div id="login-screen" class="card">
+        <h2>Tizimga Kirish</h2>
+        <div class="input-group">
+            <label>Login</label>
+            <input type="text" id="loginInput" placeholder="Loginni kiriting">
+        </div>
+        <div class="input-group">
+            <label>Parol</label>
+            <input type="password" id="passwordInput" placeholder="Parolni kiriting">
+        </div>
+        <button class="btn" onclick="loginUser()">Kirish</button>
+        <p id="loginError" style="color: red; display: none; margin-top: 10px; font-weight: bold;"></p>
     </div>
 
-    <div class="card">
-        <h3>Nazorat Safarini Boshlash</h3>
-        <p><small style="color: #7f8c8d;">Safar davomida GPS joylashuvingiz rahbar xaritasida avtomatik ravishda yangilanib turadi.</small></p>
-        <button class="btn" id="startBtn" onclick="startTracking()">Navbatchilikni boshlash</button>
-        <button class="btn btn-stop" id="stopBtn" onclick="stopTracking()">Navbatchilikni yakunlash</button>
-        <div id="gpsStatus">Hozircha GPS faol emas.</div>
+    <!-- 2. ISH EKRANI (FAQAT TO'G'RI TIZIMGA KIRGANDA OCHILADI) -->
+    <div id="work-screen">
+        <div class="card">
+            <h2>Xodim Interfeysi</h2>
+            <p><strong>Ism:</strong> <span id="userName">...</span></p>
+            <p><strong>ID:</strong> <span id="userId">...</span></p>
+            <p><strong>Telefon:</strong> <span id="userTel">...</span></p>
+        </div>
+
+        <div class="card">
+            <h3>Navbatchilikni Boshlash</h3>
+            <button class="btn" id="startBtn" onclick="startTracking()">Navbatchilikni boshlash</button>
+            <button class="btn btn-stop" id="stopBtn" onclick="stopTracking()">Navbatchilikni yakunlash</button>
+            <div id="gpsStatus">Hozircha GPS faol emas.</div>
+        </div>
     </div>
 
-    <!-- Supabase JS kutubxonasini ulash -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Supabase ulanish sozlamalari
         const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
-        
-        // Nomlar to'qnashmasligi uchun 'supabaseClient' deb e'lon qilamiz
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let watchId = null;
-        const xodimId = "XODIM_01"; // SQL'da yaratgan test xodimimiz IDsi
+        let loggedUser = null; // Kirgan xodim ma'lumotlari saqlanadi
 
-        // GPS koordinatalarni Supabase bazasiga jo'natish funksiyasi
-        async function updateGPSInDatabase(lat, lng) {
+        // 1. Loginnni tekshirish funksiyasi
+        async function loginUser() {
+            const loginVal = document.getElementById('loginInput').value.trim();
+            const passwordVal = document.getElementById('passwordInput').value.trim();
+            const errorText = document.getElementById('loginError');
+
+            errorText.style.display = 'none';
+
+            if (!loginVal || !passwordVal) {
+                errorText.innerText = "Iltimos, barcha maydonlarni to'ldiring!";
+                errorText.style.display = 'block';
+                return;
+            }
+
             try {
-                // UPDATE o'rniga UPSERT ishlatamiz (agar jadvalda ID bo'lmasa, uni yaratadi, bor bo'lsa yangilaydi)
-                const { error } = await supabaseClient
+                const { data, error } = await supabaseClient
                     .from('xodimlar_gps')
-                    .upsert({ 
-                        id: xodimId,
-                        ism: "Vali Aliyev",
-                        tel: "+998901234567",
-                        lat: lat, 
-                        lng: lng,
-                        oxirgi_yangilanish: new Date().toISOString()
-                    });
+                    .select('*')
+                    .eq('login', loginVal)
+                    .eq('parol', passwordVal)
+                    .single();
 
-                if (error) {
-                    console.error("Bazaga yozishda xatolik yuz berdi:", error.message);
+                if (error || !data) {
+                    errorText.innerText = "Xato! Login yoki Parol noto'g'ri, yoki bunday xodim mavjud emas!";
+                    errorText.style.display = 'block';
                 } else {
-                    console.log("GPS muvaffaqiyatli bazaga uzatildi!");
+                    // Muvaffaqiyatli kirildi
+                    loggedUser = data;
+                    document.getElementById('userName').innerText = data.ism;
+                    document.getElementById('userId').innerText = data.id;
+                    document.getElementById('userTel').innerText = data.tel || "Kiritilmagan";
+
+                    // Ekranlarni almashtirish
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('work-screen').style.display = 'block';
                 }
             } catch (err) {
-                console.error("Kutilmagan xato:", err);
+                errorText.innerText = "Baza bilan ulanishda xato!";
+                errorText.style.display = 'block';
+            }
+        }
+
+        // 2. Status va GPS ni bazaga yuborish
+        async function updateStatusInDatabase(lat, lng, statusVal) {
+            if (!loggedUser) return;
+            try {
+                const updateData = { 
+                    id: loggedUser.id,
+                    status: statusVal,
+                    oxirgi_yangilanish: new Date().toISOString()
+                };
+
+                if (lat && lng) {
+                    updateData.lat = lat;
+                    updateData.lng = lng;
+                }
+
+                await supabaseClient
+                    .from('xodimlar_gps')
+                    .upsert(updateData);
+
+            } catch (err) {
+                console.error("GPS yuborishda xato:", err);
             }
         }
 
@@ -106,7 +142,7 @@
             if ("geolocation" in navigator) {
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('stopBtn').style.display = 'block';
-                document.getElementById('gpsStatus').innerText = "GPS signal qidirilmoqda...";
+                document.getElementById('gpsStatus').innerText = "GPS qidirilmoqda...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
@@ -114,20 +150,18 @@
                         const lng = position.coords.longitude;
                         
                         document.getElementById('gpsStatus').innerHTML = 
-                            `Jonli koordinatalar aniqlandi va bazaga uzatilmoqda:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
+                            `Jonli koordinatalar aniqlandi:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
                         
-                        // Bazani yangilash funksiyasini chaqiramiz
-                        updateGPSInDatabase(lat, lng);
+                        updateStatusInDatabase(lat, lng, "online");
                     },
                     (error) => {
-                        console.error("GPS Error:", error);
-                        document.getElementById('gpsStatus').innerText = "GPS xatoligi: Joylashuv ruxsatini bering!";
+                        document.getElementById('gpsStatus').innerText = "GPS xatoligi: Ruxsat bering!";
                         stopTracking();
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                alert("Smartfoningizda GPS tizimi aniqlanmadi.");
+                alert("GPS topilmadi.");
             }
         }
 
@@ -139,6 +173,8 @@
             document.getElementById('startBtn').style.display = 'block';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('gpsStatus').innerText = "Navbatchilik yakunlandi. GPS o'chirildi.";
+            
+            updateStatusInDatabase(null, null, "offline");
         }
     </script>
 </body>
