@@ -135,7 +135,7 @@
         <div id="tab-monitoring" class="tab-content active">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin:0; font-size: 18px;">👥 Jonli Monitoring</h3>
-                <button onclick="clearSelectedXodim()" class="btn-action btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px;">Tozalash</button>
+                <button onclick="clearSelectedXodim()" class="btn-action btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px;">Tozalash ✖</button>
             </div>
             <div id="xodimlar-list">Yuklanmoqda...</div>
             
@@ -210,10 +210,11 @@
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Splash ekranni to'g'ri o'chirish
         setTimeout(() => {
             document.getElementById('splash-screen').style.display = 'none';
             document.getElementById('admin-login-screen').style.display = 'flex';
-        }, 1500);
+        }, 1200);
 
         function tryAdminLogin() {
             const user = document.getElementById('adminUser').value;
@@ -258,7 +259,7 @@
             });
 
             fetchXodimlar();
-            setInterval(fetchXodimlar, 4000); // 4 soniyada bazani yangilash
+            setInterval(fetchXodimlar, 4000); 
             setInterval(loadChat, 4000);
             setInterval(fetchSelectedXodimRoute, 4000);
         }
@@ -293,6 +294,7 @@
             }
         }
 
+        // KARTADAGI ESKI VA BERILGAN REJALARNI BUTUNLAY O'CHIRISH (TOZALASH)
         function clearSelectedXodim() {
             selectedXodimId = null;
             selectedRouteMarkers.forEach(m => map.removeLayer(m));
@@ -352,10 +354,10 @@
                 const hozirgiVaqt = new Date().getTime();
 
                 xodimlar.forEach(xodim => {
-                    // *** INTERNET / GPS O'CHGANINI TEKSHIRISH (HEARTBEAT) ***
                     let oxirgiAktivlik = xodim.updated_at ? new Date(xodim.updated_at).getTime() : 0;
-                    // Agar oxirgi signalga 25 soniyadan ko'p o'tgan bo'lsa -> Demak internet yoki GPS o'chgan!
-                    let realStatus = xodim.status;
+                    let realStatus = xgrid = xmodim = x2 = xodim.status;
+                    
+                    // 25 soniyadan ko'p vaqt o'tgan bo'lsa offlayn qilish
                     if (hozirgiVaqt - oxirgiAktivlik > 25000) {
                         realStatus = 'offline';
                     }
@@ -371,7 +373,7 @@
                     listDiv.innerHTML += `
                         <div class="xodim-item ${isSelectedClass}" onclick="selectXodim('${xodim.id}')">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size: 16px; font-weight: bold;">${xgrid = xodim.ism}</span>
+                                <span style="font-size: 16px; font-weight: bold;">${xodim.ism}</span>
                                 <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>
                             </div>
                             <div style="font-size:13px; margin-top:8px; color:#c8d6e5;">
@@ -383,7 +385,6 @@
                         </div>
                     `;
                     
-                    // Xaritadagi marshrut markerlari (Faqat mas'ul chindan ham onlayn bo'lsa ko'rinadi)
                     if (isOnline && xodim.lat && xodim.lng) {
                         const pos = [xodim.lat, xodim.lng];
                         if (activeMarkers[xodim.id]) {
@@ -400,11 +401,10 @@
                     }
                 });
 
-                // CRUD paneli ro'yxati
                 const crudList = document.getElementById('crud-xodimlar-list');
                 crudList.innerHTML = xodimlar.map(x => `
                     <div class="xodim-item" style="cursor:default;">
-                        <b style="font-size:15px;">${x.ism}</b> <br><span style="font-size:12px; color:#c8d6e5;">(Login: ${x.login} | Tel: ${x.tel || 'Yo'q'})</span>
+                        <b style="font-size:15px;">${x.ism}</b> <br><span style="font-size:12px; color:#c8d6e5;">(Login: ${x.login} | Tel: ${x.tel || 'Yo\'q'})</span>
                         <div style="margin-top:10px; display:flex; gap:8px;">
                             <button class="btn-action btn-warning" style="padding:6px; font-size:13px;" onclick="editXodim('${x.id}')">Tahrirlash</button>
                             <button class="btn-action btn-danger" style="padding:6px; font-size:13px;" onclick="deleteXodim('${x.id}')">O'chirish</button>
