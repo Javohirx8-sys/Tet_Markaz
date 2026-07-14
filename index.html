@@ -3,43 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boyqozon ETK - Sinov Xaritasi</title>
+    <title>Boyqozon ETK - Rahbar Paneli</title>
     
     <!-- Leaflet.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
+        * { box-sizing: border-box; }
         html, body {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
+            font-family: Arial, sans-serif;
+            display: flex;
+        }
+        #sidebar {
+            width: 320px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            height: 100vh;
+            flex-shrink: 0;
         }
         #map {
+            flex-grow: 1;
             height: 100vh;
-            width: 100vw;
-            background-color: #ddd;
+            width: calc(100vw - 320px);
+            background-color: #e5e9f0;
+        }
+        h2 { margin-top: 0; font-size: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px;}
+        .tp-card {
+            background: #34495e;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tp-card:hover {
+            background: #1abc9c;
+        }
+        .status-box {
+            background: #1abc9c;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: auto; /* Pastga mahkamlaydi */
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Test uchun to'liq ekranli xarita -->
+    <div id="sidebar">
+        <h2>Boyqozon ETK</h2>
+        <p><b>Rahbar:</b> ID-ADMIN-01</p>
+        <p>Transformatorlar ro'yxati:</p>
+        <div id="tp-list"></div>
+        
+        <div class="status-box">
+            <h4>Jonli Nazorat (GPS)</h4>
+            <div id="xodim-status">Xodim ulanishi kutilmoqda...</div>
+        </div>
+    </div>
+
+    <!-- Xarita -->
     <div id="map"></div>
 
     <!-- Leaflet.js JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Supabase JS kutubxonasi -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // Xaritani Boyqozon koordinatalarida ochish
+        // Supabase ulanishi
+        const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Xaritani Parkent hududiga to'g'irlab ochamiz
         const map = L.map('map').setView([41.295, 69.695], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Sinov uchun bitta marker qo'yamiz
-        L.marker([41.295, 69.695]).addTo(map).bindPopup("Sinov markazi").openPopup();
+        // Transformatorlar koordinatalari
+        const transformatorlar = [
+            { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692 },
+            { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698 },
+            { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695 }
+        ];
+
+        const tpListDiv = document.getElementById('tp-list');
+
+        transformatorlar.forEach(tp => {
+            const marker = L.marker([tp.lat, tp.lng]).addTo(map);
+            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
+
+            const card = document.createElement('div');
+            card.className = 'tp-card';
+            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}`;
+            card.onclick = () => {
+                map.setView([tp.lat, tp.lng], 16);
+                marker.openPopup();
+            };
+            tpListDiv.appendChild(card);
+        });
+
+        // Xodimning boshlang'ich qizil markeri
+        let xodimMarker = L.circleMarker([41.295, 69.695], {
+            color: '#e74c3c',
+            fillColor: '#e74c3c',
+            fillOpacity: 1,
+            radius: 9
+        }).addTo(map);
+        xodimMarker.bindPopup("<b>Xodim: Vali Aliyev</b>");
+
+        // Supabase-dan ma'lumotlarni tortish
+        async function getXodimLocation() {
+            try {
+                const { data, error } = await supabase
+                    .from('xodimlar_gps')
+                    .select('*')
+                    .eq('id', 'XODIM_01') // Jadvalingizdagi ID bilan bir xil
+                    .single();
+
+                if (error) {
+                    console.error("Xatolik:", error.message);
+                    return;
+                }
+
+                if (data && data.lat && data.lng) {
+                    const newLatLng = new L.LatLng(data.lat, data.lng);
+                    xodimMarker.setLatLng(newLatLng);
+                    
+                    // Agar xarita xodimdan uzoqlashib ketgan bo'lsa, uni markazga olib kelish uchun:
+                    // map.setView(newLatLng);
+
+                    const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
+                    document.getElementById('xodim-status').innerHTML = `
+                        <b>Ism:</b> ${data.ism || 'Vali Aliyev'}<br>
+                        <b>Tel:</b> ${data.tel || 'Noma\'lum'}<br>
+                        <b>Oxirgi yangilanish:</b> ${vaqt}<br>
+                        <b>GPS:</b> ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}
+                    `;
+                }
+            } catch (err) {
+                console.error("Ulanish xatosi:", err);
+            }
+        }
+
+        // Har 3 soniyada ma'lumotni yangilab turish
+        setInterval(getXodimLocation, 3000);
+        getXodimLocation();
     </script>
 </body>
 </html>
