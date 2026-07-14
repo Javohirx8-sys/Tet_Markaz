@@ -114,24 +114,24 @@
             }
         }
 
-        // 2. Status va GPS ni bazaga yuborish
+        // 2. Status va GPS ni bazada to'g'ri yangilash (UPDATE orqali)
         async function updateStatusInDatabase(lat, lng, statusVal) {
             if (!loggedUser) return;
             try {
-                const updateData = { 
-                    id: loggedUser.id,
-                    status: statusVal,
-                    oxirgi_yangilanish: new Date().toISOString()
-                };
-
-                if (lat && lng) {
-                    updateData.lat = lat;
-                    updateData.lng = lng;
-                }
-
-                await supabaseClient
+                // Upsert o'rniga aniq UPDATE ishlatamiz, shunda login/parol va boshqa ma'lumotlar o'chib ketmaydi
+                const { error } = await supabaseClient
                     .from('xodimlar_gps')
-                    .upsert(updateData);
+                    .update({
+                        status: statusVal,
+                        lat: lat,
+                        lng: lng,
+                        oxirgi_yangilanish: new Date().toISOString()
+                    })
+                    .eq('id', loggedUser.id);
+
+                if (error) {
+                    console.error("Bazani yangilashda xato:", error.message);
+                }
 
             } catch (err) {
                 console.error("GPS yuborishda xato:", err);
@@ -144,6 +144,23 @@
                 document.getElementById('stopBtn').style.display = 'block';
                 document.getElementById('gpsStatus').innerText = "GPS qidirilmoqda...";
 
+                // Tugma bosilishi bilanoq dastlabki tezkor koordinatani olib bazani darhol ONLINE qilamiz
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        document.getElementById('gpsStatus').innerHTML = 
+                            `Jonli koordinatalar aniqlandi:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
+                        
+                        updateStatusInDatabase(lat, lng, "online");
+                    },
+                    (error) => {
+                        console.log("Dastlabki GPS olishda kichik kechikish...");
+                    },
+                    { enableHighAccuracy: true }
+                );
+
+                // Doimiy kuzatib borish (watchPosition)
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const lat = position.coords.latitude;
@@ -161,11 +178,11 @@
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                alert("GPS topilmadi.");
+                alert("Sizning qurilmangizda GPS topilmadi.");
             }
         }
 
-        function stopTracking() {
+        async function stopTracking() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -174,7 +191,8 @@
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('gpsStatus').innerText = "Navbatchilik yakunlandi. GPS o'chirildi.";
             
-            updateStatusInDatabase(null, null, "offline");
+            // Tugatganda koordinatalarni tozalab, offline qilamiz
+            await updateStatusInDatabase(null, null, "offline");
         }
     </script>
 </body>
