@@ -56,9 +56,9 @@
             z-index: 10;
         }
         #sidebar h2 { font-size: 26px; text-align: center; margin-top: 0; margin-bottom: 20px; color: #fff; letter-spacing: 1px; border-bottom: 2px solid var(--accent-color); padding-bottom: 15px;}
-        #map { flex-grow: 1; height: 100vh; z-index: 1; }
+        #map { flex-grow: 1; height: 100vh; z-index: 1; background: #e5e3de; }
         
-        /* Tab tugmalari - Yirik va sensor ekranga mos */
+        /* Tab tugmalari */
         .tab-buttons { display: flex; margin-bottom: 25px; gap: 10px; }
         .tab-btn { flex: 1; padding: 16px 10px; background: #341f97; border: none; color: white; border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: bold; -webkit-tap-highlight-color: transparent; }
         .tab-btn.active { background: var(--accent-color); color: #1e272e; }
@@ -142,9 +142,12 @@
 
         <!-- 1. KUZATISH TAB -->
         <div id="tab-monitoring" class="tab-content active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin:0; font-size: 19px;">👥 Jonli Monitoring</h3>
-                <button onclick="clearSelectedXodim()" class="btn-action btn-danger" style="width: auto; padding: 8px 16px; font-size: 13px; border-radius: 8px;">Tozalash ✖</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 8px;">
+                <h3 style="margin:0; font-size: 19px;">👥 Jonli Kuzatuv</h3>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="resetSelectedXodimTasks()" class="btn-action btn-warning" style="width: auto; padding: 8px 12px; font-size: 12px; border-radius: 8px;">Ishlarni o'chirish 🔄</button>
+                    <button onclick="clearSelectedXodim()" class="btn-action btn-danger" style="width: auto; padding: 8px 12px; font-size: 12px; border-radius: 8px;">Tozalash ✖</button>
+                </div>
             </div>
             <div id="xodimlar-list">Yuklanmoqda...</div>
             
@@ -250,6 +253,11 @@
             map = L.map('map').setView([41.295, 69.695], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+            // Karta to'liq ochilishi uchun o'lchamlarni qayta hisoblash
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 500);
+
             map.on('click', function(e) {
                 const currentTab = document.querySelector('.tab-btn.active').innerText;
                 if (currentTab === 'Reja berish') {
@@ -283,6 +291,11 @@
             event.target.classList.add('active');
             document.getElementById('tab-' + tabName).classList.add('active');
             clearTempRoute();
+            
+            // Xarita o'lchamini yangilash tab o'zgarganda muhim
+            if (map) {
+                setTimeout(() => { map.invalidateSize(); }, 200);
+            }
         }
 
         function updateTempPointsList() {
@@ -311,6 +324,32 @@
             selectedRouteMarkers.forEach(m => map.removeLayer(m));
             selectedRouteMarkers = [];
             fetchXodimlar();
+        }
+
+        // QO'LDA BAJARILGAN ISHLARNI O'CHIRISH (RESET)
+        async function resetSelectedXodimTasks() {
+            if (!selectedXodimId) {
+                alert("Iltimos, avval kuzatish ro'yxatidan xodimni tanlang!");
+                return;
+            }
+            
+            const action = confirm("Tanlangan xodimning barcha bajarilgan (yashil) ishlarini qaytadan 'Kutilmoqda' holatiga o'tkazmoqchimisiz?\n\n[Ha] - Qaytadan topshiriq holiga o'tkazish\n[Bekor qilish] - Amaldan o'chirish");
+            
+            if (action) {
+                // Faqat bajarilganlarni kutilmoqda (false) holatiga o'tkazish
+                const { error } = await supabaseClient
+                    .from('vazifalar')
+                    .update({ bajarildi: false })
+                    .eq('xodim_id', selectedXodimId);
+                
+                if(!error) {
+                    alert("Topshiriqlar muvaffaqiyatli tiklandi!");
+                    fetchSelectedXodimRoute();
+                    fetchXodimlar();
+                } else {
+                    alert("Tizimda xatolik yuz berdi.");
+                }
+            }
         }
 
         async function fetchSelectedXodimRoute() {
@@ -368,7 +407,8 @@
                     let oxirgiAktivlik = xodim.updated_at ? new Date(xodim.updated_at).getTime() : 0;
                     let realStatus = xodim.status;
                     
-                    if (hozirgiVaqt - oxirgiAktivlik > 25000) {
+                    // Agar 35 soniyadan ko'p aloqaga chiqmagan bo'lsa avtomat offline qilish
+                    if (hozirgiVaqt - oxirgiAktivlik > 35000) {
                         realStatus = 'offline';
                     }
 
@@ -435,11 +475,13 @@
 
             if (!id || !ism || !login || !parol) { alert("Barcha maydonlarni to'ldiring!"); return; }
 
+            const isoDate = new Date().toISOString();
+
             if (editId) {
-                await supabaseClient.from('xodimlar_gps').update({ id, ism, tel, login, parol, updated_at: new Date() }).eq('id', editId);
+                await supabaseClient.from('xodimlar_gps').update({ id, ism, tel, login, parol, updated_at: isoDate }).eq('id', editId);
                 alert("Muvaffaqiyatli tahrirlandi!");
             } else {
-                await supabaseClient.from('xodimlar_gps').insert([{ id, ism, tel, login, parol, status: 'offline', updated_at: new Date() }]);
+                await supabaseClient.from('xodimlar_gps').insert([{ id, ism, tel, login, parol, status: 'offline', updated_at: isoDate }]);
                 alert("Yangi xodim qo'shildi!");
             }
             resetForm();
@@ -512,7 +554,6 @@
                     const deleteCount = data.length - limit;
                     const oldMessages = data.slice(0, deleteCount);
                     
-                    // Eski xabarlarni bazadan o'chirish jarayoni
                     for(let i = 0; i < oldMessages.length; i++) {
                         await supabaseClient.from('chat_messages').delete().eq('id', oldMessages[i].id);
                     }
@@ -526,7 +567,6 @@
             }
         }
 
-        // CHATNI ADMIN TOMONIDAN BUTUNLAY TOZALASH FUNKSIYASI
         async function clearCurrentChat() {
             const xId = document.getElementById('chatXodimSelect').value;
             if (!xId) { alert("Xodim tanlanmagan!"); return; }
