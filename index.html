@@ -5,16 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boyqozon ETK - Rahbar Paneli</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet.js Bepul Xarita uslublari (To'liq xavfsiz havola orqali) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     
     <style>
         * { box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
+        html, body {
             margin: 0;
             padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
             display: flex;
-            height: 100vh;
         }
         #sidebar {
             width: 320px;
@@ -24,10 +26,15 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            height: 100vh;
+            flex-shrink: 0;
         }
+        /* Xarita aniq ko'rinishi uchun unga qat'iy o'lcham beramiz */
         #map {
             flex-grow: 1;
-            height: 100%;
+            height: 100vh;
+            width: calc(100vw - 320px);
+            background-color: #e5e9f0; /* Agar internet sust bo'lsa ham bo'shliq ko'rinmaydi */
         }
         h2 { margin-top: 0; font-size: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px;}
         .tp-card {
@@ -45,7 +52,7 @@
             background: #1abc9c;
             padding: 10px;
             border-radius: 6px;
-            margin-top: 15px;
+            margin-top: auto; /* Avtomatik eng pastga tushadi */
             font-size: 13px;
         }
     </style>
@@ -64,9 +71,11 @@
         </div>
     </div>
 
+    <!-- Xarita konteyneri -->
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet.js xarita skripti -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Supabase JS kutubxonasini ulash -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -76,9 +85,11 @@
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Xaritani yaratish va boshlang'ich koordinatani sozlash
         const map = L.map('map').setView([41.295, 69.695], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
@@ -128,11 +139,9 @@
             }
 
             if (data && data.lat && data.lng) {
-                // Xodgim markerini yangi koordinataga ko'chirish
                 const newLatLng = new L.LatLng(data.lat, data.lng);
                 xodimMarker.setLatLng(newLatLng);
                 
-                // Sidebar dagi xodim statusini yangilash
                 const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
                 document.getElementById('xodim-status').innerHTML = `
                     <b>Ism:</b> ${data.ism}<br>
@@ -143,9 +152,9 @@
             }
         }
 
-        // Har 3 soniyada bazadan xodimning joylashuvini so'rab turish (Polling)
+        // Har 3 soniyada koordinatani yangilash
         setInterval(getXodimLocation, 3000);
-        getXodimLocation(); // birinchi marta darhol ishga tushishi uchun
+        getXodimLocation();
     </script>
 </body>
 </html>
