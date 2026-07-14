@@ -3,158 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boyqozon ETK - Rahbar Paneli</title>
+    <title>Boyqozon ETK - Sinov Xaritasi</title>
     
-    <!-- Leaflet.js Bepul Xarita uslublari (To'liq xavfsiz havola orqali) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        * { box-sizing: border-box; }
         html, body {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            font-family: Arial, sans-serif;
-            display: flex;
         }
-        #sidebar {
-            width: 320px;
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            height: 100vh;
-            flex-shrink: 0;
-        }
-        /* Xarita aniq ko'rinishi uchun unga qat'iy o'lcham beramiz */
         #map {
-            flex-grow: 1;
             height: 100vh;
-            width: calc(100vw - 320px);
-            background-color: #e5e9f0; /* Agar internet sust bo'lsa ham bo'shliq ko'rinmaydi */
-        }
-        h2 { margin-top: 0; font-size: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px;}
-        .tp-card {
-            background: #34495e;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .tp-card:hover {
-            background: #1abc9c;
-        }
-        .status-box {
-            background: #1abc9c;
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: auto; /* Avtomatik eng pastga tushadi */
-            font-size: 13px;
+            width: 100vw;
+            background-color: #ddd;
         }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h2>Boyqozon ETK</h2>
-        <p><b>Rahbar:</b> ID-ADMIN-01</p>
-        <p>Transformatorlar ro'yxati:</p>
-        <div id="tp-list"></div>
-        
-        <div class="status-box">
-            <h4>Jonli Nazorat (GPS)</h4>
-            <div id="xodim-status">Xodim ulanishi kutilmoqda...</div>
-        </div>
-    </div>
-
-    <!-- Xarita konteyneri -->
+    <!-- Test uchun to'liq ekranli xarita -->
     <div id="map"></div>
 
-    <!-- Leaflet.js xarita skripti -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <!-- Supabase JS kutubxonasini ulash -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Leaflet.js JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // Supabase ulanish sozlamalari
-        const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Xaritani yaratish va boshlang'ich koordinatani sozlash
+        // Xaritani Boyqozon koordinatalarida ochish
         const map = L.map('map').setView([41.295, 69.695], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Transformatorlar koordinatalari
-        const transformatorlar = [
-            { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692, xodimId: "XODIM-01" },
-            { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698, xodimId: "XODIM-02" },
-            { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695, xodimId: "XODIM-01" }
-        ];
-
-        const tpListDiv = document.getElementById('tp-list');
-
-        transformatorlar.forEach(tp => {
-            const marker = L.marker([tp.lat, tp.lng]).addTo(map);
-            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
-
-            const card = document.createElement('div');
-            card.className = 'tp-card';
-            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}`;
-            card.onclick = () => {
-                map.setView([tp.lat, tp.lng], 16);
-                marker.openPopup();
-            };
-            tpListDiv.appendChild(card);
-        });
-
-        // Xodimning xaritadagi markerini yaratish (boshlang'ich nuqta)
-        let xodimMarker = L.circleMarker([41.295, 69.695], {
-            color: '#e74c3c',
-            fillColor: '#e74c3c',
-            fillOpacity: 1,
-            radius: 9
-        }).addTo(map);
-        xodimMarker.bindPopup("<b>Xodim (XODIM_01)</b>");
-
-        // Supabase bazasidan xodim GPS koordinatalarini real vaqtda olish
-        async function getXodimLocation() {
-            const { data, error } = await supabase
-                .from('xodimlar_gps')
-                .select('*')
-                .eq('id', 'XODIM_01')
-                .single();
-
-            if (error) {
-                console.error("Xodim GPS ma'lumotini olishda xatolik:", error);
-                return;
-            }
-
-            if (data && data.lat && data.lng) {
-                const newLatLng = new L.LatLng(data.lat, data.lng);
-                xodimMarker.setLatLng(newLatLng);
-                
-                const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
-                document.getElementById('xodim-status').innerHTML = `
-                    <b>Ism:</b> ${data.ism}<br>
-                    <b>Tel:</b> ${data.tel}<br>
-                    <b>Oxirgi yangilanish:</b> ${vaqt}<br>
-                    <b>Joylashuv:</b> ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}
-                `;
-            }
-        }
-
-        // Har 3 soniyada koordinatani yangilash
-        setInterval(getXodimLocation, 3000);
-        getXodimLocation();
+        // Sinov uchun bitta marker qo'yamiz
+        L.marker([41.295, 69.695]).addTo(map).bindPopup("Sinov markazi").openPopup();
     </script>
 </body>
 </html>
