@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boyqozon ETK - Rahbar Paneli</title>
+    
+    <!-- Leaflet.js Bepul Xarita uslublari -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 320px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        #map {
+            flex-grow: 1;
+            height: 100%;
+        }
+        h2 { margin-top: 0; font-size: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px;}
+        .tp-card {
+            background: #34495e;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tp-card:hover {
+            background: #1abc9c;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Chap tarafdagi nazorat paneli -->
+    <div id="sidebar">
+        <h2>Boyqozon ETK</h2>
+        <p><b>Rahbar:</b> ID-ADMIN-01</p>
+        <p>Transformatorlar ro'yxati (Usti bosing):</p>
+        <div id="tp-list"></div>
+    </div>
+
+    <!-- O'ng tarafdagi bepul xarita -->
+    <div id="map"></div>
+
+    <!-- Leaflet.js xarita skripti -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. Xaritani Boyqozon tuman koordinatalariga moslab ochamiz
+        const map = L.map('map').setView([41.295, 69.695], 14);
+
+        // OpenStreetMap-ning mutlaqo bepul xarita qatlamini ulaymiz
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap hamjamiyati'
+        }).addTo(map);
+
+        // 2. Transformatorlarimiz ro'yxati (Hozircha namuna sifatida 3 tasi)
+        const transformatorlar = [
+            { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692, xodimId: "XODIM-01" },
+            { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698, xodimId: "XODIM-02" },
+            { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695, xodimId: "XODIM-01" }
+        ];
+
+        // 3. Transformatorlarni xaritaga joylash va chap paneldagi ro'yxatni shakllantirish
+        const tpListDiv = document.getElementById('tp-list');
+
+        transformatorlar.forEach(tp => {
+            // Xaritada marker yaratish
+            const marker = L.marker([tp.lat, tp.lng]).addTo(map);
+            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}<br>Mas'ul xodim: ${tp.xodimId}`);
+
+            // Chap paneldagi kartochka yaratish
+            const card = document.createElement('div');
+            card.className = 'tp-card';
+            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}<br><small>Mas'ul: ${tp.xodimId}</small>`;
+            
+            // Kartochkaga bosilganda xaritani o'sha transformatorga olib boradigan qilish
+            card.onclick = () => {
+                map.setView([tp.lat, tp.lng], 16);
+                marker.openPopup();
+            };
+            
+            tpListDiv.appendChild(card);
+        });
+    </script>
+</body>
+</html>
