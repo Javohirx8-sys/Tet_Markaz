@@ -4,61 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boyqozon ETK - Rahbar Paneli</title>
-    
-    <!-- Leaflet.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
         * { box-sizing: border-box; }
         html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
+            margin: 0; padding: 0;
+            height: 100%; width: 100%;
             font-family: Arial, sans-serif;
             display: flex;
         }
         #sidebar {
-            width: 320px;
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            height: 100vh;
-            flex-shrink: 0;
+            width: 340px; background: #2c3e50; color: white;
+            padding: 15px; display: flex; flex-direction: column;
+            overflow-y: auto; height: 100vh; flex-shrink: 0;
         }
-        #map {
-            flex-grow: 1;
-            height: 100vh;
-            width: calc(100vw - 320px);
-            background-color: #e5e9f0;
+        #map { flex-grow: 1; height: 100vh; background-color: #e5e9f0; }
+        h2, h3 { margin-top: 0; border-bottom: 2px solid #34495e; padding-bottom: 8px; }
+        h3 { font-size: 16px; margin-top: 15px; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 3px; color: #bdc3c7; }
+        .form-group input {
+            width: 100%; padding: 8px; border: none;
+            border-radius: 4px; background: #34495e; color: white;
         }
-        h2 { margin-top: 0; font-size: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px;}
-        .tp-card {
-            background: #34495e;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
+        .btn-add {
+            width: 100%; padding: 10px; background: #1abc9c;
+            border: none; color: white; font-weight: bold;
+            border-radius: 4px; cursor: pointer; margin-top: 5px;
         }
-        .tp-card:hover {
-            background: #1abc9c;
+        .btn-add:hover { background: #16a085; }
+        #xodimlar-list {
+            margin-top: 15px; flex-grow: 1;
         }
-        .status-box {
-            background: #e67e22; /* Kutish rangi */
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: auto;
-            font-size: 13px;
-            transition: 0.3s;
+        .xodim-item {
+            background: #34495e; padding: 10px;
+            border-radius: 6px; margin-bottom: 8px; font-size: 13px;
         }
-        /* Online holat uchun chiroyli yashil rang */
-        .status-online {
-            background: #27ae60 !important;
+        .status-badge {
+            display: inline-block; padding: 2px 6px;
+            border-radius: 4px; font-size: 11px; font-weight: bold;
+            margin-top: 5px;
         }
+        .status-online { background: #27ae60; color: white; }
+        .status-offline { background: #7f8c8d; color: white; }
     </style>
 </head>
 <body>
@@ -66,13 +54,34 @@
     <div id="sidebar">
         <h2>Boyqozon ETK</h2>
         <p><b>Rahbar:</b> ID-ADMIN-01</p>
-        <p>Transformatorlar ro'yxati:</p>
-        <div id="tp-list"></div>
         
-        <div class="status-box" id="status-container">
-            <h4>Jonli Nazorat (GPS)</h4>
-            <div id="xodim-status">Xodim ulanishi kutilmoqda...</div>
+        <!-- XODIM QO'SHISH FORMASI -->
+        <h3>➕ Yangi Xodim Qo'shish</h3>
+        <div class="form-group">
+            <label>Xodim ID (masalan: XODIM_02)</label>
+            <input type="text" id="newId" placeholder="XODIM_02">
         </div>
+        <div class="form-group">
+            <label>Ism va Familiya</label>
+            <input type="text" id="newName" placeholder="Ali Valiyer">
+        </div>
+        <div class="form-group">
+            <label>Telefon raqam</label>
+            <input type="text" id="newTel" placeholder="+998901234567">
+        </div>
+        <div class="form-group">
+            <label>Kirish Logini</label>
+            <input type="text" id="newLogin" placeholder="ali99">
+        </div>
+        <div class="form-group">
+            <label>Parol</label>
+            <input type="password" id="newParol" placeholder="parol123">
+        </div>
+        <button class="btn-add" onclick="addNewXodim()">Bazaga Qo'shish</button>
+
+        <!-- JONLI XODIMLAR RO'YXATI -->
+        <h3>👥 Xodimlar Nazorati (GPS)</h3>
+        <div id="xodimlar-list">Xodimlar yuklanmoqda...</div>
     </div>
 
     <div id="map"></div>
@@ -86,129 +95,128 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const map = L.map('map').setView([41.295, 69.695], 14);
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Transformatorlar koordinatalari
+        // Transformatorlar markerlari
         const transformatorlar = [
             { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692 },
             { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698 },
             { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695 }
         ];
-
-        const tpListDiv = document.getElementById('tp-list');
-
         transformatorlar.forEach(tp => {
-            const marker = L.marker([tp.lat, tp.lng]).addTo(map);
-            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
-
-            const card = document.createElement('div');
-            card.className = 'tp-card';
-            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}`;
-            card.onclick = () => {
-                map.setView([tp.lat, tp.lng], 16);
-                marker.openPopup();
-            };
-            tpListDiv.appendChild(card);
+            L.marker([tp.lat, tp.lng]).addTo(map).bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
         });
 
-        // Xodimning qizil markeri
-        let xodimMarker = L.circleMarker([41.295, 69.695], {
-            color: '#e74c3c',
-            fillColor: '#e74c3c',
-            fillOpacity: 1,
-            radius: 9
-        });
-        xodimMarker.bindPopup("<b>Xodim: Vali Aliyev</b>");
+        // Xodimlarning markerlari va chiziqlarini saqlash uchun obektlar
+        let activeMarkers = {};
+        let activePaths = {};
 
-        let isMarkerOnMap = false;
+        // 1. Yangi xodim qo'shish funksiyasi
+        async function addNewXodim() {
+            const id = document.getElementById('newId').value.trim();
+            const ism = document.getElementById('newName').value.trim();
+            const tel = document.getElementById('newTel').value.trim();
+            const login = document.getElementById('newLogin').value.trim();
+            const parol = document.getElementById('newParol').value.trim();
 
-        // 🔀 Marshrutni (yurilgan yo'lni) saqlash uchun massiv va Leaflet Polyline obyekti
-        let xodimYoliKoordinatalari = [];
-        let xodimYoliLiniyasi = L.polyline([], {
-            color: '#2980b9', // Chiziqning ko'k rangi
-            weight: 5,        // Chiziqning qalinligi
-            opacity: 0.8,     // Shaffofligi
-            dashArray: '10, 10' // Chiziq-chiziq (punktir) ko'rinishida bo'lishi uchun
-        }).addTo(map);
+            if (!id || !ism || !login || !parol) {
+                alert("Iltimos, barcha maydonlarni to'ldiring!");
+                return;
+            }
 
-        async function getXodimLocation() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('xodimlar_gps')
-                    .select('*')
-                    .eq('id', 'XODIM_01')
-                    .single();
+            const { error } = await supabaseClient
+                .from('xodimlar_gps')
+                .insert([{ id, ism, tel, login, parol, status: 'offline' }]);
 
-                if (error) {
-                    console.error("Xatolik:", error.message);
-                    return;
-                }
-
-                if (data) {
-                    const statusContainer = document.getElementById('status-container');
-                    const xodimStatusText = document.getElementById('xodim-status');
-
-                    // Agar xodim ONLINE bo'lsa
-                    if (data.status === "online" && data.lat && data.lng) {
-                        const newLatLng = new L.LatLng(data.lat, data.lng);
-                        xodimMarker.setLatLng(newLatLng);
-                        
-                        if (!isMarkerOnMap) {
-                            xodimMarker.addTo(map);
-                            isMarkerOnMap = true;
-                        }
-
-                        // 📍 Yangi koordinatani marshrut tarixiga qo'shamiz
-                        // Faqatgina oxirgi koordinatadan farq qilsa qo'shamiz (ortiqcha nuqtalar ko'payib ketmasligi uchun)
-                        if (xodimYoliKoordinatalari.length === 0 || 
-                            xodimYoliKoordinatalari[xodimYoliKoordinatalari.length - 1].lat !== data.lat ||
-                            xodimYoliKoordinatalari[xodimYoliKoordinatalari.length - 1].lng !== data.lng) {
-                            
-                            xodimYoliKoordinatalari.push(newLatLng);
-                            // Xaritadagi chiziqni yangi nuqtalar bilan yangilaymiz
-                            xodimYoliLiniyasi.setLatLngs(xodimYoliKoordinatalari);
-                        }
-
-                        statusContainer.classList.add('status-online');
-
-                        const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
-                        xodimStatusText.innerHTML = `
-                            <b>Status:</b> <span style="color: #fff; font-weight: bold;">ONLINE</span><br>
-                            <b>Ism:</b> ${data.ism}<br>
-                            <b>Tel:</b> ${data.tel}<br>
-                            <b>Oxirgi faollik:</b> ${vaqt}<br>
-                            <b>GPS:</b> ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}
-                        `;
-                    } 
-                    // Agar xodim OFFLINE bo'lsa
-                    else {
-                        if (isMarkerOnMap) {
-                            map.removeLayer(xodimMarker);
-                            isMarkerOnMap = false;
-                        }
-
-                        // 🧹 Xodim oflayn bo'lganda eski yurgan yo'llarini tozalab tashlaymiz (yangi navbatchilik noldan boshlanishi uchun)
-                        xodimYoliKoordinatalari = [];
-                        xodimYoliLiniyasi.setLatLngs([]);
-
-                        statusContainer.classList.remove('status-online');
-                        xodimStatusText.innerHTML = `
-                            <b>Status:</b> OFFLINE<br>
-                            <small style="color: #eee;">Xodim navbatchilikda emas.</small>
-                        `;
-                    }
-                }
-            } catch (err) {
-                console.error("Ulanish xatosi:", err);
+            if (error) {
+                alert("Xatolik yuz berdi: " + error.message);
+            } else {
+                alert(`${ism} muvaffaqiyatli qo'shildi!`);
+                // Formani tozalash
+                document.getElementById('newId').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('newTel').value = '';
+                document.getElementById('newLogin').value = '';
+                document.getElementById('newParol').value = '';
+                fetchXodimlar();
             }
         }
 
-        // Har 3 soniyada nazorat qilib turamiz
-        setInterval(getXodimLocation, 3000);
-        getXodimLocation();
+        // 2. Barcha xodimlarni bazadan olib xaritada yangilash
+        async function fetchXodimlar() {
+            try {
+                const { data: xodimlar, error } = await supabaseClient
+                    .from('xodimlar_gps')
+                    .select('*');
+
+                if (error) throw error;
+
+                const listDiv = document.getElementById('xodimlar-list');
+                listDiv.innerHTML = '';
+
+                xodimlar.forEach(xodim => {
+                    // Sidebar ro'yxatini yaratish
+                    const item = document.createElement('div');
+                    item.className = 'xodim-item';
+                    const isOnline = xodim.status === 'online';
+                    const badgeClass = isOnline ? 'status-online' : 'status-offline';
+                    
+                    item.innerHTML = `
+                        <b>ID:</b> ${xodim.id}<br>
+                        <b>Ism:</b> ${xodim.ism}<br>
+                        <b>Tel:</b> ${xodim.tel || 'Kiritilmagan'}<br>
+                        <span class="status-badge ${badgeClass}">${xodim.status.toUpperCase()}</span>
+                    `;
+                    listDiv.appendChild(item);
+
+                    // Xaritadagi markerlarni boshqarish
+                    if (isOnline && xgrid = xodim.lat && xodim.lng) {
+                        const pos = [xodim.lat, xgrid = xodim.lng];
+                        
+                        // Agar marker allaqachon xaritada bo'lsa, joyini yangilaymiz
+                        if (activeMarkers[xodim.id]) {
+                            activeMarkers[xodim.id].setLatLng(pos);
+                        } else {
+                            // Yangi marker yaratamiz
+                            activeMarkers[xodim.id] = L.circleMarker(pos, {
+                                color: '#e74c3c', fillColor: '#e74c3c', fillOpacity: 1, radius: 9
+                            }).addTo(map).bindPopup(`<b>${xodim.ism}</b><br>ID: ${xodim.id}`);
+                        }
+
+                        // Marshrut chizig'ini yangilash
+                        if (!activePaths[xodim.id]) {
+                            activePaths[xodim.id] = L.polyline([], {color: '#2980b9', weight: 4}).addTo(map);
+                        }
+                        // Chiziqqa nuqta qo'shish
+                        const currentPath = activePaths[xodim.id].getLatLngs();
+                        const lastPoint = currentPath[currentPath.length - 1];
+                        if (!lastPoint || lastPoint.lat !== xodim.lat || lastPoint.lng !== xodim.lng) {
+                            activePaths[xodim.id].addLatLng(pos);
+                        }
+
+                    } else {
+                        // Agar xodim offline bo'lsa, uning markerini va chizig'ini xaritadan o'chiramiz
+                        if (activeMarkers[xodim.id]) {
+                            map.removeLayer(activeMarkers[xodim.id]);
+                            delete activeMarkers[xodim.id];
+                        }
+                        if (activePaths[xodim.id]) {
+                            map.removeLayer(activePaths[xodim.id]);
+                            delete activePaths[xodim.id];
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error("Xodimlarni yuklashda xatolik:", err);
+            }
+        }
+
+        // Har 3 soniyada xodimlarni yangilab turamiz
+        setInterval(fetchXodimlar, 3000);
+        fetchXodimlar();
     </script>
 </body>
 </html>
