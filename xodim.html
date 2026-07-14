@@ -505,6 +505,7 @@
             }
 
             requestWakeLock();
+            sendGPSToDatabase(); // Kirishda darhol joylashuvni va online holatni yuborish
             startTracking();
             startHeartbeat(); // Onlayn holatni doimiy saqlash
 
@@ -548,12 +549,15 @@
             );
         }
 
+        // Xato haqida faqat bir marta ogohlantirish chiqarish uchun bayroq
+        let rlsWarningShown = false;
+
         // Bazaga koordinatalarni yuborish
         async function sendGPSToDatabase() {
             if (!currentUser || !userLat || !userLng) return;
             const isoTime = new Date().toISOString();
 
-            await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('xodimlar_gps')
                 .update({
                     lat: userLat,
@@ -561,7 +565,31 @@
                     status: 'online',
                     updated_at: isoTime
                 })
-                .eq('id', currentUser.id);
+                .eq('id', currentUser.id)
+                .select();
+
+            checkWriteResult(data, error);
+        }
+
+        // UPDATE so'rovi haqiqatan ham bazaga yozildimi tekshirish.
+        // Supabase'da RLS (Row Level Security) UPDATE uchun ruxsat bermasa, xato chiqmaydi,
+        // lekin data bo'sh massiv qaytadi — ya'ni hech qanday qator o'zgarmagan bo'ladi.
+        function checkWriteResult(data, error) {
+            if (error) {
+                console.error('Bazaga yozishda xatolik:', error.message);
+                if (!rlsWarningShown) {
+                    rlsWarningShown = true;
+                    alert("Xatolik: joylashuvni bazaga yozib bo'lmadi.\n\n" + error.message);
+                }
+                return;
+            }
+            if (!data || data.length === 0) {
+                console.warn('Yozuv 0 qatorga ta\'sir qildi — ehtimol Supabase RLS (Row Level Security) UPDATE ruxsatini bermayapti.');
+                if (!rlsWarningShown) {
+                    rlsWarningShown = true;
+                    alert("Diqqat: joylashuv bazaga yozilmayapti!\n\nSupabase'da 'xodimlar_gps' jadvali uchun UPDATE ruxsati (RLS policy) yo'q bo'lishi mumkin. Administratorga xabar bering.");
+                }
+            }
         }
 
         // Heartbeat - Agar foydalanuvchi qimirlamasa ham har 5 soniyada "men onlaynman" signalini yuborish
@@ -571,14 +599,17 @@
                 if (!currentUser) return;
                 const isoTime = new Date().toISOString();
 
-                await supabaseClient
+                const { data, error } = await supabaseClient
                     .from('xodimlar_gps')
                     .update({
                         status: 'online',
                         updated_at: isoTime
                     })
-                    .eq('id', currentUser.id);
-                
+                    .eq('id', currentUser.id)
+                    .select();
+
+                checkWriteResult(data, error);
+
                 document.getElementById('online-badge').style.background = 'var(--accent-color)';
                 document.getElementById('online-badge').querySelector('span').innerText = 'ONLINE';
             }, 5000);
