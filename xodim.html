@@ -49,7 +49,6 @@
 </head>
 <body>
 
-    <!-- Xodim ma'lumotlari -->
     <div class="card">
         <h2>Xodim Interfeysi</h2>
         <p><strong>Sizning IDingiz:</strong> <span id="userId">XODIM_01</span></p>
@@ -57,7 +56,6 @@
         <p><strong>Biriktirilgan hudud:</strong> Boyqozon MFY</p>
     </div>
 
-    <!-- GPS boshqaruvi -->
     <div class="card">
         <h3>Nazorat Safarini Boshlash</h3>
         <p><small style="color: #7f8c8d;">Safar davomida GPS joylashuvingiz rahbar xaritasida avtomatik ravishda yangilanib turadi.</small></p>
@@ -66,25 +64,50 @@
         <div id="gpsStatus">Hozircha GPS faol emas.</div>
     </div>
 
+    <!-- Supabase JS kutubxonasini ulash -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Supabase ulanish sozlamalari
+        const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let watchId = null;
+        const xodimId = "XODIM_01"; // Test uchun ID
+
+        // GPS koordinatalarni Supabase bazasiga jo'natish funksiyasi
+        async function updateGPSInDatabase(lat, lng) {
+            const { error } = await supabase
+                .from('xodimlar_gps')
+                .update({ 
+                    lat: lat, 
+                    lng: lng,
+                    oxirgi_yangilanish: new Date().toISOString()
+                })
+                .eq('id', xodimId);
+
+            if (error) {
+                console.error("Bazaga yozishda xato:", error);
+            } else {
+                console.log("GPS muvaffaqiyatli bazaga yuklandi.");
+            }
+        }
 
         function startTracking() {
             if ("geolocation" in navigator) {
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('stopBtn').style.display = 'block';
-                document.getElementById('gpsStatus').innerText = "GPS signal qidirilmoqda...";
+                document.getElementById('gpsStatus').innerText = "GPS qidirilmoqda...";
 
-                // Brauzerning bepul GPS datchigidan koordinata olish
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         document.getElementById('gpsStatus').innerHTML = 
-                            `Jonli koordinatalar aniqlandi:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
+                            `Jonli koordinatalar aniqlandi va bazaga uzatilmoqda:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
                         
-                        // Kelgusi qadamda bu koordinatalarni bazaga yuboramiz
-                        console.log("GPS uzatildi:", lat, lng);
+                        // Bazani yangilash funksiyasini chaqiramiz
+                        updateGPSInDatabase(lat, lng);
                     },
                     (error) => {
                         document.getElementById('gpsStatus').innerText = "GPS xatoligi: Joylashuv ruxsatini bering!";
@@ -93,7 +116,7 @@
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                alert("Smartfoningizda GPS tizimi aniqlanmadi.");
+                alert("Smartfonda GPS aniqlanmadi.");
             }
         }
 
