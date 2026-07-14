@@ -79,10 +79,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // Supabase ulanishi
+        // Supabase ulanishi - Nomlar to'qnashmasligi uchun o'zgaruvchi nomini o'zgartirdik
         const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Bu yerda kutubxonadan foydalanib 'supabaseClient' yaratamiz
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Xaritani Parkent hududiga to'g'irlab ochamiz
         const map = L.map('map').setView([41.295, 69.695], 14);
@@ -126,10 +128,10 @@
         // Supabase-dan ma'lumotlarni tortish
         async function getXodimLocation() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('xodimlar_gps')
                     .select('*')
-                    .eq('id', 'XODIM_01') // Jadvalingizdagi ID bilan bir xil
+                    .eq('id', 'XODIM_01')
                     .single();
 
                 if (error) {
@@ -141,9 +143,6 @@
                     const newLatLng = new L.LatLng(data.lat, data.lng);
                     xodimMarker.setLatLng(newLatLng);
                     
-                    // Agar xarita xodimdan uzoqlashib ketgan bo'lsa, uni markazga olib kelish uchun:
-                    // map.setView(newLatLng);
-
                     const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
                     document.getElementById('xodim-status').innerHTML = `
                         <b>Ism:</b> ${data.ism || 'Vali Aliyev'}<br>
