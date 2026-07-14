@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boyqozon ETK - Rahbar Paneli</title>
     
-    <!-- Leaflet.js Bepul Xarita uslublari -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
@@ -42,60 +41,111 @@
         .tp-card:hover {
             background: #1abc9c;
         }
+        .status-box {
+            background: #1abc9c;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Chap tarafdagi nazorat paneli -->
     <div id="sidebar">
         <h2>Boyqozon ETK</h2>
         <p><b>Rahbar:</b> ID-ADMIN-01</p>
-        <p>Transformatorlar ro'yxati (Usti bosing):</p>
+        <p>Transformatorlar ro'yxati:</p>
         <div id="tp-list"></div>
+        
+        <div class="status-box">
+            <h4>Jonli Nazorat (GPS)</h4>
+            <div id="xodim-status">Xodim ulanishi kutilmoqda...</div>
+        </div>
     </div>
 
-    <!-- O'ng tarafdagi bepul xarita -->
     <div id="map"></div>
 
-    <!-- Leaflet.js xarita skripti -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Supabase JS kutubxonasini ulash -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
-        // 1. Xaritani Boyqozon tuman koordinatalariga moslab ochamiz
+        // Supabase ulanish sozlamalari
+        const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const map = L.map('map').setView([41.295, 69.695], 14);
 
-        // OpenStreetMap-ning mutlaqo bepul xarita qatlamini ulaymiz
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap hamjamiyati'
+            attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // 2. Transformatorlarimiz ro'yxati (Hozircha namuna sifatida 3 tasi)
+        // Transformatorlar koordinatalari
         const transformatorlar = [
             { id: "TP-01", nomi: "Boyqozon 1-transformator", lat: 41.298, lng: 69.692, xodimId: "XODIM-01" },
             { id: "TP-02", nomi: "Boyqozon 2-transformator", lat: 41.293, lng: 69.698, xodimId: "XODIM-02" },
             { id: "TP-03", nomi: "Boyqozon 3-transformator", lat: 41.291, lng: 69.695, xodimId: "XODIM-01" }
         ];
 
-        // 3. Transformatorlarni xaritaga joylash va chap paneldagi ro'yxatni shakllantirish
         const tpListDiv = document.getElementById('tp-list');
 
         transformatorlar.forEach(tp => {
-            // Xaritada marker yaratish
             const marker = L.marker([tp.lat, tp.lng]).addTo(map);
-            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}<br>Mas'ul xodim: ${tp.xodimId}`);
+            marker.bindPopup(`<b>${tp.nomi}</b><br>ID: ${tp.id}`);
 
-            // Chap paneldagi kartochka yaratish
             const card = document.createElement('div');
             card.className = 'tp-card';
-            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}<br><small>Mas'ul: ${tp.xodimId}</small>`;
-            
-            // Kartochkaga bosilganda xaritani o'sha transformatorga olib boradigan qilish
+            card.innerHTML = `<strong>${tp.id}</strong> - ${tp.nomi}`;
             card.onclick = () => {
                 map.setView([tp.lat, tp.lng], 16);
                 marker.openPopup();
             };
-            
             tpListDiv.appendChild(card);
         });
+
+        // Xodimning xaritadagi markerini yaratish (boshlang'ich nuqta)
+        let xodimMarker = L.circleMarker([41.295, 69.695], {
+            color: '#e74c3c',
+            fillColor: '#e74c3c',
+            fillOpacity: 1,
+            radius: 9
+        }).addTo(map);
+        xodimMarker.bindPopup("<b>Xodim (XODIM_01)</b>");
+
+        // Supabase bazasidan xodim GPS koordinatalarini real vaqtda olish
+        async function getXodimLocation() {
+            const { data, error } = await supabase
+                .from('xodimlar_gps')
+                .select('*')
+                .eq('id', 'XODIM_01')
+                .single();
+
+            if (error) {
+                console.error("Xodim GPS ma'lumotini olishda xatolik:", error);
+                return;
+            }
+
+            if (data && data.lat && data.lng) {
+                // Xodgim markerini yangi koordinataga ko'chirish
+                const newLatLng = new L.LatLng(data.lat, data.lng);
+                xodimMarker.setLatLng(newLatLng);
+                
+                // Sidebar dagi xodim statusini yangilash
+                const vaqt = new Date(data.oxirgi_yangilanish).toLocaleTimeString();
+                document.getElementById('xodim-status').innerHTML = `
+                    <b>Ism:</b> ${data.ism}<br>
+                    <b>Tel:</b> ${data.tel}<br>
+                    <b>Oxirgi yangilanish:</b> ${vaqt}<br>
+                    <b>Joylashuv:</b> ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}
+                `;
+            }
+        }
+
+        // Har 3 soniyada bazadan xodimning joylashuvini so'rab turish (Polling)
+        setInterval(getXodimLocation, 3000);
+        getXodimLocation(); // birinchi marta darhol ishga tushishi uchun
     </script>
 </body>
 </html>
