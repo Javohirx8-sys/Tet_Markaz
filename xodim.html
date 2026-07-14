@@ -70,26 +70,35 @@
         // Supabase ulanish sozlamalari
         const SUPABASE_URL = "https://sgnuqwqbyystmyfgikko.supabase.co";
         const SUPABASE_KEY = "sb_publishable_M0j9s_er4k9wDiZgBNWQuQ_1YyqHFY8";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Nomlar to'qnashmasligi uchun 'supabaseClient' deb e'lon qilamiz
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let watchId = null;
-        const xodimId = "XODIM_01"; // Test uchun ID
+        const xodimId = "XODIM_01"; // SQL'da yaratgan test xodimimiz IDsi
 
         // GPS koordinatalarni Supabase bazasiga jo'natish funksiyasi
         async function updateGPSInDatabase(lat, lng) {
-            const { error } = await supabase
-                .from('xodimlar_gps')
-                .update({ 
-                    lat: lat, 
-                    lng: lng,
-                    oxirgi_yangilanish: new Date().toISOString()
-                })
-                .eq('id', xodimId);
+            try {
+                // UPDATE o'rniga UPSERT ishlatamiz (agar jadvalda ID bo'lmasa, uni yaratadi, bor bo'lsa yangilaydi)
+                const { error } = await supabaseClient
+                    .from('xodimlar_gps')
+                    .upsert({ 
+                        id: xodimId,
+                        ism: "Vali Aliyev",
+                        tel: "+998901234567",
+                        lat: lat, 
+                        lng: lng,
+                        oxirgi_yangilanish: new Date().toISOString()
+                    });
 
-            if (error) {
-                console.error("Bazaga yozishda xato:", error);
-            } else {
-                console.log("GPS muvaffaqiyatli bazaga yuklandi.");
+                if (error) {
+                    console.error("Bazaga yozishda xatolik yuz berdi:", error.message);
+                } else {
+                    console.log("GPS muvaffaqiyatli bazaga uzatildi!");
+                }
+            } catch (err) {
+                console.error("Kutilmagan xato:", err);
             }
         }
 
@@ -97,12 +106,13 @@
             if ("geolocation" in navigator) {
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('stopBtn').style.display = 'block';
-                document.getElementById('gpsStatus').innerText = "GPS qidirilmoqda...";
+                document.getElementById('gpsStatus').innerText = "GPS signal qidirilmoqda...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
+                        
                         document.getElementById('gpsStatus').innerHTML = 
                             `Jonli koordinatalar aniqlandi va bazaga uzatilmoqda:<br><span style="color: #27ae60;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</span>`;
                         
@@ -110,13 +120,14 @@
                         updateGPSInDatabase(lat, lng);
                     },
                     (error) => {
+                        console.error("GPS Error:", error);
                         document.getElementById('gpsStatus').innerText = "GPS xatoligi: Joylashuv ruxsatini bering!";
                         stopTracking();
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                alert("Smartfonda GPS aniqlanmadi.");
+                alert("Smartfoningizda GPS tizimi aniqlanmadi.");
             }
         }
 
