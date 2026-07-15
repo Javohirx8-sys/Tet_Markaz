@@ -141,7 +141,10 @@
     <div class="theme-toggle" onclick="toggleTheme()">🌓</div>
 
     <div id="sidebar">
-        <h2>Parkent TET Markazi</h2>
+        <h2 style="display:flex; align-items:center; justify-content:center; gap:10px; position:relative;">
+            Parkent TET Markazi
+            <button onclick="adminLogout()" title="Chiqish" style="position:absolute; right:0; top:-4px; background:rgba(255,107,107,0.15); border:none; color:#ff6b6b; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:14px;">⏻</button>
+        </h2>
         <div class="tab-buttons">
             <button class="tab-btn active" data-tab="monitoring" onclick="switchTab('monitoring', this)">Kuzatish</button>
             <button class="tab-btn" data-tab="xodimlar" onclick="switchTab('xodimlar', this)">Xodimlar</button>
@@ -258,13 +261,26 @@
 
         setTimeout(() => {
             document.getElementById('splash-screen').style.display = 'none';
-            document.getElementById('admin-login-screen').style.display = 'flex';
+            // Sessiya saqlangan bo'lsa (avval kirgan bo'lsa), parol qayta so'ralmaydi
+            if (localStorage.getItem('tet_admin_session') === 'true') {
+                initSystem();
+            } else {
+                document.getElementById('admin-login-screen').style.display = 'flex';
+            }
         }, 1200);
+
+        function adminLogout() {
+            if (confirm("Admin panelidan chiqishni tasdiqlaysizmi? Qayta kirish uchun parol talab qilinadi.")) {
+                localStorage.removeItem('tet_admin_session');
+                location.reload();
+            }
+        }
 
         function tryAdminLogin() {
             const user = document.getElementById('adminUser').value;
             const pass = document.getElementById('adminPass').value;
             if (user === 'admin' && pass === 'admin123') {
+                localStorage.setItem('tet_admin_session', 'true');
                 document.getElementById('admin-login-screen').style.display = 'none';
                 initSystem();
             } else {
