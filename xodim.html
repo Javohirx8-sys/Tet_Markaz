@@ -6,328 +6,456 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#341f97">
-    <title>Parkent TET - Mas'ul Paneli</title>
-    <!-- Leaflet CSS -->
+    <meta name="theme-color" content="#0b0f14">
+    <title>Parkent TET</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --primary-color: #341f97;
-            --accent-color: #10ac84;
-            --danger-color: #ff6b6b;
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --text-color: #2c3e50;
+            --bg: #0b0f14;
+            --bg-elevated: #11161d;
+            --card: #141a23;
+            --card-alt: #1b232f;
+            --border: #232b36;
+            --accent: #22c55e;
+            --accent-dim: rgba(34, 197, 94, 0.15);
+            --accent-strong: #16a34a;
+            --danger: #ef4444;
+            --text-primary: #f3f5f7;
+            --text-secondary: #8b95a1;
+            --text-faint: #58626e;
         }
-
         * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            box-sizing: border-box; margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
-
-        body {
-            background: var(--bg-color);
-            color: var(--text-color);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+        html, body {
+            height: 100%; background: var(--bg); color: var(--text-primary);
+            overflow: hidden; overscroll-behavior: none;
         }
+        svg.icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
 
-        /* Splash Screen */
+        /* ============ SPLASH ============ */
         #splash-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #1e272e; z-index: 9999;
+            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: white; transition: opacity 0.5s ease;
+            transition: opacity .5s ease;
+        }
+        .brand-badge {
+            width: 68px; height: 68px; border-radius: 20px; background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: 800; color: #06210f; margin-bottom: 18px;
+            box-shadow: 0 0 40px rgba(34,197,94,0.35);
         }
         .spinner {
-            width: 60px; height: 60px; border: 6px solid #f3f3f3;
-            border-top: 6px solid var(--accent-color); border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+            width: 34px; height: 34px; border: 3px solid #1e2733; border-top: 3px solid var(--accent);
+            border-radius: 50%; animation: spin 0.9s linear infinite; margin-top: 22px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Login Oynasi */
+        /* ============ LOGIN ============ */
         #login-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1e272e 0%, #0a1118 100%);
-            z-index: 9998; display: flex; justify-content: center; align-items: center; padding: 20px;
+            position: fixed; inset: 0; background: var(--bg); z-index: 9998;
+            display: none; flex-direction: column; justify-content: center; align-items: center; padding: 32px 26px;
         }
-        .login-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(15px);
-            padding: 35px 25px; border-radius: 24px;
-            width: 100%; max-width: 380px; text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
+        .login-wrap { width: 100%; max-width: 360px; }
+        .login-logo { display: flex; flex-direction: column; align-items: center; margin-bottom: 34px; }
+        .login-title { font-size: 24px; font-weight: 800; letter-spacing: 1px; margin-top: 14px; text-align: center; line-height: 1.15; }
+        .login-sub { color: var(--text-secondary); font-size: 13.5px; text-align: center; margin-top: 10px; line-height: 1.5; max-width: 260px; }
+        .field { position: relative; margin-bottom: 14px; }
+        .field svg.icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-faint); width: 18px; height: 18px; }
+        .field input {
+            width: 100%; padding: 15px 14px 15px 42px; border-radius: 14px;
+            background: var(--card); border: 1px solid var(--border); color: var(--text-primary);
+            font-size: 15px; outline: none;
         }
-        .login-card h2 { font-size: 26px; margin-bottom: 8px; font-weight: 700; letter-spacing: 1px;}
-        .login-card p { font-size: 14px; color: #a4b0be; margin-bottom: 25px; }
-        .login-card input {
-            width: 100%; padding: 16px; margin-bottom: 15px;
-            border: 1px solid rgba(255,255,255,0.2); border-radius: 14px;
-            background: rgba(255,255,255,0.05); color: white; font-size: 16px;
-            outline: none; transition: 0.3s;
+        .field input::placeholder { color: var(--text-faint); }
+        .field input:focus { border-color: var(--accent); }
+        .field .eye-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 6px;
         }
-        .login-card input:focus { border-color: var(--accent-color); background: rgba(255,255,255,0.1); }
-        .login-card button {
-            width: 100%; padding: 16px; background: var(--accent-color);
-            color: white; border: none; border-radius: 14px;
-            font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.3s;
-            box-shadow: 0 8px 20px rgba(16, 172, 132, 0.3);
+        .login-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 22px 0; font-size: 13px; }
+        .remember-check { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; }
+        .remember-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+        .forgot-link { color: var(--accent); text-decoration: none; font-weight: 600; background: none; border: none; cursor: pointer; font-size: 13px; }
+        .btn-primary {
+            width: 100%; padding: 16px; background: var(--accent); color: #06210f; border: none;
+            border-radius: 14px; font-weight: 800; font-size: 16px; cursor: pointer;
         }
-        .login-card button:active { transform: scale(0.98); }
-        .login-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary:disabled { opacity: .6; }
+        #login-error { color: var(--danger); font-size: 13.5px; font-weight: 600; margin-top: 14px; text-align: center; display: none; }
 
-        /* GPS ruxsat so'rash oynasi */
+        /* ============ GPS REQUEST ============ */
         #gps-request-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); z-index: 10000;
-            display: none; justify-content: center; align-items: center; padding: 20px;
-            backdrop-filter: blur(8px);
+            position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 10000;
+            display: none; justify-content: center; align-items: center; padding: 24px; backdrop-filter: blur(6px);
         }
         .gps-card {
-            background: var(--card-bg); padding: 30px 20px; border-radius: 24px;
-            text-align: center; max-width: 340px; width: 100%;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            background: var(--card); padding: 32px 22px; border-radius: 22px; text-align: center;
+            max-width: 320px; width: 100%; border: 1px solid var(--border);
         }
-        .gps-icon { font-size: 50px; margin-bottom: 15px; animation: bounce 2s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .gps-card h3 { margin-bottom: 10px; font-size: 20px; color: #2e3a59;}
-        .gps-card p { font-size: 14px; color: #6e7a91; margin-bottom: 25px; line-height: 1.5; }
-        .gps-card button {
-            width: 100%; padding: 14px; background: var(--primary-color);
-            color: white; border: none; border-radius: 12px;
-            font-weight: bold; font-size: 16px; cursor: pointer;
+        .gps-icon-badge {
+            width: 56px; height: 56px; border-radius: 16px; background: var(--accent-dim);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; color: var(--accent);
         }
+        .gps-card h3 { margin-bottom: 10px; font-size: 18px; }
+        .gps-card p { font-size: 13.5px; color: var(--text-secondary); margin-bottom: 22px; line-height: 1.55; }
 
-        /* Asosiy Interfeys */
-        #app-header {
-            background: var(--primary-color); color: white;
-            padding: 15px 20px; display: flex; align-items: center; justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; gap: 10px;
-        }
-        #app-header h1 { font-size: 18px; font-weight: 600; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .status-badge {
-            background: var(--accent-color); color: white;
-            padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .pulse-dot {
-            width: 8px; height: 8px; background: white; border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.5; } }
+        /* ============ APP SHELL ============ */
+        #app-shell { display: none; flex-direction: column; height: 100%; }
+        #views-container { flex-grow: 1; position: relative; overflow: hidden; }
+        .app-view { position: absolute; inset: 0; display: none; flex-direction: column; overflow-y: auto; background: var(--bg); }
+        .app-view.active { display: flex; }
 
-        .logout-btn {
-            background: rgba(255,255,255,0.15); border: none; color: white;
-            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
-            font-size: 14px; display: flex; align-items: center; justify-content: center;
+        .view-header {
+            padding: 18px 20px 14px 20px; display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
         }
+        .view-title { font-size: 20px; font-weight: 800; }
+        .icon-btn {
+            width: 38px; height: 38px; border-radius: 12px; background: var(--card); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: pointer;
+        }
+        .icon-btn.active-filter { color: var(--accent); border-color: var(--accent); }
 
-        #map {
-            flex-grow: 1; width: 100%; background: #e5e3de;
+        /* ---- Boshqaruv (Dashboard) ---- */
+        .dash-greeting { padding: 0 20px 4px 20px; font-size: 22px; font-weight: 800; }
+        .dash-greeting span { color: var(--text-secondary); font-weight: 500; font-size: 14px; display: block; margin-top: 4px; }
+        .dash-cards { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+        .stat-row { display: flex; gap: 14px; }
+        .stat-card {
+            flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px;
         }
+        .stat-card .stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+        .stat-card .stat-value { font-size: 24px; font-weight: 800; margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+        .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+        .dot.off { background: var(--text-faint); }
+        .progress-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; }
+        .progress-card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+        .progress-card-top b { font-size: 15px; }
+        .progress-card-top span { color: var(--accent); font-weight: 800; font-size: 15px; }
+        .progress-track { height: 10px; border-radius: 8px; background: var(--bg-elevated); overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-strong), var(--accent)); width: 0%; transition: width .5s ease; }
+        .dash-section-label { padding: 4px 20px 10px 20px; font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
 
-        /* GPS status paneli (Xaritaning tepasida) */
-        #gps-alert-bar {
-            background: var(--danger-color); color: white; text-align: center;
-            padding: 8px; font-size: 13px; font-weight: bold; display: none; z-index: 101;
+        /* ---- Xarita (Map) ---- */
+        #view-xarita { padding: 0; overflow: hidden; }
+        .map-view-header {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 500; padding: 18px 20px 0 20px;
+            display: flex; justify-content: space-between; align-items: center; pointer-events: none;
         }
+        .map-view-header .view-title { text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+        .map-view-header .icon-btn { pointer-events: all; background: rgba(20,26,35,0.9); backdrop-filter: blur(6px); }
+        #map { position: absolute; inset: 0; background: #10151c; }
+        .map-info-card {
+            position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 500;
+            background: rgba(20,26,35,0.92); backdrop-filter: blur(10px); border: 1px solid var(--border);
+            border-radius: 20px; padding: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+        .map-info-top { display: flex; align-items: center; gap: 12px; }
+        .avatar-circle {
+            width: 46px; height: 46px; border-radius: 50%; background: var(--accent-dim); color: var(--accent);
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px;
+            border: 2px solid var(--accent); flex-shrink: 0;
+        }
+        .map-info-name { font-size: 15px; font-weight: 700; }
+        .map-info-role { font-size: 12px; color: var(--text-secondary); }
+        .map-info-speed { margin-left: auto; color: var(--accent); font-weight: 700; font-size: 13px; white-space: nowrap; }
+        .map-info-divider { height: 1px; background: var(--border); margin: 12px 0; }
+        .map-info-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+        .map-info-address { font-size: 13.5px; margin-top: 3px; color: var(--text-primary); }
+        .map-info-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary); }
+        .battery-chip { display: flex; align-items: center; gap: 5px; }
 
-        /* Chat va Topshiriqlar uchun pastki panel */
-        #bottom-panel {
-            background: var(--card-bg);
-            border-top-left-radius: 24px; border-top-right-radius: 24px;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
-            z-index: 100; display: flex; flex-direction: column;
-            max-height: 80px; min-height: 80px; transition: max-height 0.3s ease;
-        }
-        .panel-drag-handle {
-            width: 100%; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer;
-        }
-        .drag-bar { width: 50px; height: 5px; background: #dfe4ea; border-radius: 10px; }
-        
-        .panel-content {
-            padding: 0 20px 20px 20px; overflow-y: auto; flex-grow: 1;
-        }
-
-        /* Panel ichidagi Reja / Chat tab tugmalari */
-        .panel-tabs { display: flex; gap: 8px; padding: 0 20px 14px 20px; }
-        .panel-tab-btn {
-            flex: 1; padding: 12px 8px; background: #f1f2f6; border: none;
-            color: var(--text-color); border-radius: 12px; cursor: pointer;
-            font-size: 14px; font-weight: bold; display: flex; align-items: center;
-            justify-content: center; gap: 6px; -webkit-tap-highlight-color: transparent;
-        }
-        .panel-tab-btn.active { background: var(--primary-color); color: white; }
-        .panel-tab-content { display: none; }
-        .panel-tab-content.active { display: block; }
-
-        /* Reja progress bar (hodimga ham % ko'rinishi uchun) */
-        .worker-progress-container {
-            width: 100%; background-color: #eef1f5; border-radius: 12px;
-            margin: 10px 0 16px 0; overflow: hidden; height: 16px;
-        }
-        .worker-progress-bar {
-            height: 100%; background: linear-gradient(90deg, var(--accent-color), #1dd1a1);
-            width: 0%; transition: width 0.5s ease-in-out;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 10px; font-weight: bold;
-        }
-
-        /* Marshrut ro'yxati */
-        .route-section h3 { font-size: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; }
-        .task-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        /* ---- Topshiriqlar (Tasks) ---- */
+        .task-list { padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
         .task-item {
-            background: #f8f9fa; border: 1px solid #e1e8ed;
-            padding: 14px; border-radius: 12px; display: flex;
-            align-items: center; justify-content: space-between;
+            background: var(--card); border: 1px solid var(--border); padding: 14px; border-radius: 16px;
+            display: flex; align-items: center; justify-content: space-between;
         }
-        .task-item.completed { border-left: 5px solid var(--accent-color); background: #f0fdf4; }
-        .task-item.pending { border-left: 5px solid var(--danger-color); }
+        .task-item.completed { border-color: rgba(34,197,94,0.35); }
         .task-info { display: flex; align-items: center; gap: 12px; }
         .task-badge {
-            width: 32px; height: 32px; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-weight: bold; color: white;
+            width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: white; flex-shrink: 0;
         }
-        .task-badge.pending { background: var(--danger-color); }
-        .task-badge.completed { background: var(--accent-color); }
-
-        /* Switch toggler */
-        .switch {
-            position: relative; display: inline-block; width: 44px; height: 24px;
-        }
+        .task-badge.pending { background: var(--danger); }
+        .task-badge.completed { background: var(--accent); color: #06210f; }
+        .task-name { font-size: 14.5px; font-weight: 700; }
+        .task-status { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc; transition: .3s; border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-            background-color: white; transition: .3s; border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--accent-color); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border); transition: .3s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; top: 3px; background: var(--text-faint); transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(18px); background: #06210f; }
+        .empty-state { text-align: center; color: var(--text-faint); font-size: 13.5px; padding: 60px 20px; }
 
-        /* Chat */
-        .chat-section { border-top: 1px solid #f1f2f6; padding-top: 15px; }
-        .chat-box {
-            height: 150px; overflow-y: auto; background: #f8f9fa;
-            border-radius: 12px; padding: 12px; display: flex;
-            flex-direction: column; gap: 8px; margin-bottom: 10px;
-            font-size: 14px;
+        /* ---- Chat ---- */
+        #view-chat { padding: 0; }
+        #chat-messages-wrap { flex-grow: 1; overflow-y: auto; padding: 16px 16px 8px 16px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-bubble { padding: 11px 15px; border-radius: 16px; max-width: 78%; line-height: 1.4; word-wrap: break-word; font-size: 14.5px; }
+        .msg-in { background: var(--card); align-self: flex-start; border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+        .msg-out { background: var(--accent); color: #06210f; align-self: flex-end; font-weight: 500; border-bottom-right-radius: 4px; }
+        .chat-input-bar { display: flex; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+        .chat-input-bar input {
+            flex-grow: 1; padding: 13px 16px; border: 1px solid var(--border); border-radius: 14px;
+            background: var(--card); color: var(--text-primary); outline: none; font-size: 14.5px;
         }
-        .chat-bubble { padding: 10px 14px; border-radius: 12px; max-width: 80%; line-height: 1.4; word-wrap: break-word; }
-        .msg-in { background: #e1e8ed; align-self: flex-start; color: #2c3e50; }
-        .msg-out { background: var(--primary-color); align-self: flex-end; color: white; }
-        
-        .chat-input-area { display: flex; gap: 8px; }
-        .chat-input-area input {
-            flex-grow: 1; padding: 12px; border: 1px solid #dfe4ea;
-            border-radius: 10px; outline: none; font-size: 14px;
+        .chat-input-bar input:focus { border-color: var(--accent); }
+        .chat-send-btn {
+            width: 46px; height: 46px; border-radius: 14px; background: var(--accent); border: none;
+            color: #06210f; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .chat-input-area button {
-            background: var(--primary-color); color: white; border: none;
-            padding: 0 16px; border-radius: 10px; font-weight: bold;
+
+        /* ---- Profil ---- */
+        .profile-header { display: flex; flex-direction: column; align-items: center; padding: 30px 20px 22px 20px; }
+        .profile-avatar {
+            width: 78px; height: 78px; border-radius: 50%; background: var(--accent-dim); color: var(--accent);
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 26px;
+            border: 2px solid var(--accent); margin-bottom: 12px;
+        }
+        .profile-name { font-size: 19px; font-weight: 800; }
+        .profile-role { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+        .profile-list { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+        .profile-row {
+            display: flex; justify-content: space-between; align-items: center; background: var(--card);
+            border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
+        }
+        .profile-row .label { font-size: 13px; color: var(--text-secondary); }
+        .profile-row .value { font-size: 13.5px; font-weight: 700; }
+        .btn-logout {
+            margin: 24px 20px 20px 20px; padding: 15px; border-radius: 14px; background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.3); color: var(--danger); font-weight: 700; font-size: 14.5px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+        /* ---- Bottom nav ---- */
+        #bottom-nav {
+            display: flex; flex-shrink: 0; background: var(--bg-elevated); border-top: 1px solid var(--border);
+            padding: 8px 4px calc(6px + env(safe-area-inset-bottom)) 4px;
+        }
+        .nav-btn {
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px;
+            background: none; border: none; color: var(--text-faint); cursor: pointer; position: relative;
+        }
+        .nav-btn.active { color: var(--accent); }
+        .nav-btn .nav-label { font-size: 10.5px; font-weight: 700; }
+        .nav-unread-dot {
+            position: absolute; top: 2px; right: calc(50% - 16px); width: 8px; height: 8px; border-radius: 50%;
+            background: var(--danger); display: none; border: 2px solid var(--bg-elevated);
+        }
+
+        #gps-alert-banner {
+            position: fixed; top: 0; left: 0; right: 0; background: var(--danger); color: white; text-align: center;
+            padding: 9px; font-size: 12.5px; font-weight: 700; z-index: 9500; display: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. SPLASH SCREEN -->
+    <!-- SPLASH -->
     <div id="splash-screen">
+        <div class="brand-badge">P</div>
+        <div style="font-weight:800; letter-spacing:2px; font-size:15px; color:var(--text-secondary);">PARKENT TET</div>
         <div class="spinner"></div>
-        <h2 style="letter-spacing: 2px; font-size: 22px;">PARKENT TET</h2>
-        <p style="color: #a4b0be; margin-top: 8px; font-size: 14px;">Tizim tayyorlanmoqda...</p>
     </div>
 
-    <!-- 2. LOGIN OYNASI -->
-    <div id="login-screen" style="display: none;">
-        <div class="login-card">
-            <h2>Xush Kelibsiz</h2>
-            <p>Tizimga kirish uchun ma'lumotlarni kiriting</p>
-            <input type="text" id="loginUser" placeholder="Login" autocomplete="username">
-            <input type="password" id="loginPass" placeholder="Parol" autocomplete="current-password">
-            <button id="loginBtn" onclick="tryLogin()">Tizimga Kirish</button>
-            <p id="login-error" style="color: var(--danger-color); margin-top: 12px; font-weight: bold; display: none;"></p>
+    <!-- LOGIN -->
+    <div id="login-screen">
+        <div class="login-wrap">
+            <div class="login-logo">
+                <div class="brand-badge">P</div>
+                <div class="login-title">PARKENT<br>TET</div>
+                <div class="login-sub">Xodimlar nazorati va tezkor muloqot platformasi</div>
+            </div>
+
+            <div class="field">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4.5-5 7-5s5.5 1.5 7 5"/></svg>
+                <input type="text" id="loginUser" placeholder="Foydalanuvchi nomi" autocomplete="username">
+            </div>
+            <div class="field">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <input type="password" id="loginPass" placeholder="Parol" autocomplete="current-password" onkeydown="if(event.key==='Enter') tryLogin();">
+                <button type="button" class="eye-toggle" onclick="togglePassVisibility()">
+                    <svg class="icon" id="eye-icon" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+
+            <div class="login-row">
+                <label class="remember-check">
+                    <input type="checkbox" id="rememberMe" checked>
+                    Meni eslab qolish
+                </label>
+                <button type="button" class="forgot-link" onclick="alert('Parolni tiklash uchun administratorga murojaat qiling.')">Parolni unutdingiz?</button>
+            </div>
+
+            <button class="btn-primary" id="loginBtn" onclick="tryLogin()">Kirish</button>
+            <p id="login-error"></p>
         </div>
     </div>
 
-    <!-- 3. GPS RUXSAT SO'RASH OYNASI -->
+    <!-- GPS REQUEST -->
     <div id="gps-request-screen">
         <div class="gps-card">
-            <div class="gps-icon">📍</div>
+            <div class="gps-icon-badge">
+                <svg class="icon" viewBox="0 0 24 24" style="width:26px;height:26px;"><path d="M12 21s-7-5.686-7-11a7 7 0 1 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            </div>
             <h3>Joylashuvni aniqlash</h3>
-            <p id="gps-request-text">Ilovadan to'g'ri foydalanish va monitoring tizimida onlayn ko'rinishingiz uchun GPS datchigini faollashtirishingiz va ruxsat berishingiz shart.</p>
-            <button onclick="requestGPSPermission()">Joylashuvni yoqish va Ruxsat berish</button>
+            <p id="gps-request-text">Ilovadan to'g'ri foydalanish va monitoring tizimida onlayn ko'rinishingiz uchun GPS datchigini yoqishingiz kerak.</p>
+            <button class="btn-primary" onclick="requestGPSPermission()">Ruxsat berish</button>
         </div>
     </div>
 
-    <!-- 4. ASOSIY ILOVA -->
-    <div id="app-header">
-        <h1 id="user-display-name">Mas'ul Paneli</h1>
-        <div class="header-right">
-            <div class="status-badge" id="online-badge">
-                <div class="pulse-dot"></div>
-                <span>ONLINE</span>
-            </div>
-            <button class="logout-btn" onclick="logout()" title="Chiqish">⏻</button>
-        </div>
-    </div>
+    <div id="gps-alert-banner">⚠️ GPS yoki internet aloqasi yo'qoldi</div>
 
-    <div id="gps-alert-bar">⚠️ GPS signali yo'qoldi! Iltimos, telefoningizda GPS (Joylashuv)ni yoqing.</div>
+    <!-- APP SHELL -->
+    <div id="app-shell">
+        <div id="views-container">
 
-    <div id="map"></div>
-
-    <!-- Bottom Panel (Chat va Vazifalar) -->
-    <div id="bottom-panel">
-        <div class="panel-drag-handle" onclick="togglePanelExpand()">
-            <div class="drag-bar"></div>
-        </div>
-
-        <div class="panel-tabs">
-            <button class="panel-tab-btn active" data-panel-tab="reja" onclick="switchPanelTab('reja', this)">📌 Mening rejam</button>
-            <button class="panel-tab-btn" data-panel-tab="chat" onclick="switchPanelTab('chat', this)">💬 Chat <span id="chat-unread-dot" style="display:none; width:8px; height:8px; background:var(--danger-color); border-radius:50%;"></span></button>
-        </div>
-
-        <button id="back-to-map-btn" onclick="collapsePanel()" style="display:none; margin: 0 20px 12px 20px; padding: 10px; background: #f1f2f6; border: none; border-radius: 10px; color: var(--text-color); font-weight: bold; font-size: 13px; cursor: pointer; align-items:center; justify-content:center; gap:6px;">⬇ Xaritaga qaytish</button>
-
-        <div class="panel-content">
-            <!-- REJA TAB: Marshrut va Vazifalar -->
-            <div id="panel-tab-reja" class="panel-tab-content active">
-                <div class="route-section">
-                    <h3>
-                        <span>Bugungi marshrut</span>
-                        <span id="route-progress-text" style="color: var(--accent-color); font-weight: bold;">0/0</span>
-                    </h3>
-                    <div class="worker-progress-container">
-                        <div class="worker-progress-bar" id="worker-progress-bar">0%</div>
+            <!-- BOSHQARUV -->
+            <div id="view-boshqaruv" class="app-view active">
+                <div class="view-header">
+                    <div class="view-title">Boshqaruv</div>
+                    <button class="icon-btn" onclick="logout()" title="Chiqish">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                    </button>
+                </div>
+                <div class="dash-greeting" id="dash-greeting">Salom!<span id="dash-date"></span></div>
+                <div class="dash-cards">
+                    <div class="stat-row">
+                        <div class="stat-card">
+                            <div class="stat-label">Holat</div>
+                            <div class="stat-value"><span class="dot" id="dash-status-dot"></span><span id="dash-status-text">Online</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Batareya</div>
+                            <div class="stat-value" id="dash-battery">—</div>
+                        </div>
                     </div>
-                    <div class="task-list" id="tasks-container">
-                        <p style="text-align: center; color: #a4b0be; font-size: 14px; padding: 10px;">Yuklanmoqda...</p>
+                    <div class="progress-card">
+                        <div class="progress-card-top">
+                            <b>Bugungi reja</b>
+                            <span id="dash-progress-text">0/0</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" id="dash-progress-fill"></div></div>
+                    </div>
+                </div>
+                <div class="dash-section-label">Navbatdagi nuqtalar</div>
+                <div class="task-list" id="dash-upcoming-list">
+                    <p class="empty-state">Yuklanmoqda...</p>
+                </div>
+            </div>
+
+            <!-- XARITA -->
+            <div id="view-xarita" class="app-view">
+                <div class="map-view-header">
+                    <div class="view-title">Xarita</div>
+                    <button class="icon-btn" id="filter-btn" onclick="toggleRouteOverlay()" title="Marshrutni ko'rsatish">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16l-6 8v6l-4 2v-8L4 4z"/></svg>
+                    </button>
+                </div>
+                <div id="map"></div>
+                <div class="map-info-card">
+                    <div class="map-info-top">
+                        <div class="avatar-circle" id="info-initials">--</div>
+                        <div>
+                            <div class="map-info-name" id="info-name">—</div>
+                            <div class="map-info-role">Texnik xodim</div>
+                        </div>
+                        <div class="map-info-speed" id="info-speed">— km/soat</div>
+                    </div>
+                    <div class="map-info-divider"></div>
+                    <div class="map-info-label">Manzil</div>
+                    <div class="map-info-address" id="info-address">Aniqlanmoqda...</div>
+                    <div class="map-info-bottom">
+                        <span>So'nggi yangilanish: <b id="info-updated" style="color:var(--text-primary);">—</b></span>
+                        <span class="battery-chip" id="info-battery-row">
+                            <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10v4"/></svg>
+                            <span id="info-battery">—</span>
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- CHAT TAB -->
-            <div id="panel-tab-chat" class="panel-tab-content">
-                <div class="chat-box" id="chat-box-container"></div>
-                <div class="chat-input-area">
+            <!-- TOPSHIRIQLAR -->
+            <div id="view-topshiriqlar" class="app-view">
+                <div class="view-header">
+                    <div class="view-title">Topshiriqlar</div>
+                    <span style="color:var(--accent); font-weight:800; font-size:14px;" id="tasks-progress-text">0/0</span>
+                </div>
+                <div style="padding: 0 20px 18px 20px;">
+                    <div class="progress-track"><div class="progress-fill" id="tasks-progress-fill"></div></div>
+                </div>
+                <div class="task-list" id="tasks-container">
+                    <p class="empty-state">Yuklanmoqda...</p>
+                </div>
+            </div>
+
+            <!-- CHAT -->
+            <div id="view-chat" class="app-view">
+                <div class="view-header" style="border-bottom: 1px solid var(--border);">
+                    <div class="view-title">Chat</div>
+                    <span style="font-size:12px; color:var(--text-faint);">Admin bilan</span>
+                </div>
+                <div id="chat-messages-wrap"></div>
+                <div class="chat-input-bar">
                     <input type="text" id="chatMsgInput" placeholder="Xabar yozing..." onkeydown="if(event.key==='Enter') sendChatMessage();">
-                    <button onclick="sendChatMessage()">Yuborish</button>
+                    <button class="chat-send-btn" onclick="sendChatMessage()">
+                        <svg class="icon" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="m3 20 18-8L3 4v7l13 1-13 1v7z"/></svg>
+                    </button>
                 </div>
             </div>
+
+            <!-- PROFIL -->
+            <div id="view-profil" class="app-view">
+                <div class="view-header"><div class="view-title">Profil</div></div>
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profile-initials">--</div>
+                    <div class="profile-name" id="profile-name">—</div>
+                    <div class="profile-role">Texnik xodim</div>
+                </div>
+                <div class="profile-list">
+                    <div class="profile-row"><span class="label">Xodim ID</span><span class="value" id="profile-id">—</span></div>
+                    <div class="profile-row"><span class="label">Telefon</span><span class="value" id="profile-tel">—</span></div>
+                    <div class="profile-row"><span class="label">Login</span><span class="value" id="profile-login">—</span></div>
+                    <div class="profile-row"><span class="label">Holat</span><span class="value" id="profile-status">—</span></div>
+                </div>
+                <button class="btn-logout" onclick="logout()">
+                    <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                    Tizimdan chiqish
+                </button>
+            </div>
+
         </div>
+
+        <!-- BOTTOM NAV -->
+        <nav id="bottom-nav">
+            <button class="nav-btn active" data-view="boshqaruv" onclick="switchView('boshqaruv', this)">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span class="nav-label">Boshqaruv</span>
+            </button>
+            <button class="nav-btn" data-view="xarita" onclick="switchView('xarita', this)">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 21s-7-5.686-7-11a7 7 0 1 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                <span class="nav-label">Xarita</span>
+            </button>
+            <button class="nav-btn" data-view="topshiriqlar" onclick="switchView('topshiriqlar', this)">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="m9 13 2 2 4-4"/></svg>
+                <span class="nav-label">Topshiriqlar</span>
+            </button>
+            <button class="nav-btn" data-view="chat" onclick="switchView('chat', this)">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0-8-4.6L3 21l4.9-1.3A9 9 0 0 0 12 21z"/></svg>
+                <span class="nav-label">Chat</span>
+                <span class="nav-unread-dot" id="chat-unread-dot"></span>
+            </button>
+            <button class="nav-btn" data-view="profil" onclick="switchView('profil', this)">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-3.5 4.5-5 7-5s5.5 1.5 7 5"/></svg>
+                <span class="nav-label">Profil</span>
+            </button>
+        </nav>
     </div>
 
-    <!-- Leaflet JS & Supabase -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -338,236 +466,170 @@
 
         let currentUser = null;
         let map, userMarker, watchId = null;
-        let userLat = null, userLng = null;
-        let panelExpanded = false;
+        let userLat = null, userLng = null, lastSpeedKmh = null;
         let wakeLock = null;
-        let heartbeatInterval = null;
-        let tasksInterval = null;
-        let chatInterval = null;
+        let heartbeatInterval = null, tasksInterval = null, chatInterval = null, addressInterval = null;
+        let currentTasks = [];
+        let routeOverlayVisible = false;
+        let routeOverlayLayers = [];
+        let activeView = 'boshqaruv';
+        let lastSeenChatCount = 0;
+        let rlsWarningShown = false;
 
-        // XSS oldini olish uchun matnni ekranlashtirish
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = (str === null || str === undefined) ? '' : String(str);
             return div.innerHTML;
         }
 
-        // Ilovani boshlash
+        function getInitials(name) {
+            if (!name) return '--';
+            const parts = name.trim().split(/\s+/);
+            return (parts[0]?.[0] || '') .toUpperCase() + (parts[1]?.[0] || '').toUpperCase() || parts[0].slice(0,2).toUpperCase();
+        }
+
+        function togglePassVisibility() {
+            const f = document.getElementById('loginPass');
+            f.type = f.type === 'password' ? 'text' : 'password';
+        }
+
+        // ============ BOOT ============
         window.onload = function() {
             setTimeout(() => {
                 document.getElementById('splash-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('splash-screen').style.display = 'none';
                     checkSession();
-                }, 500);
-            }, 1500);
+                }, 450);
+            }, 1300);
         };
 
-        // Panel ichidagi "Reja" va "Chat" bo'limlari orasida almashtirish
-        let activePanelTab = 'reja';
-        let lastSeenChatCount = 0;
-
-        function switchPanelTab(tabName, btnEl) {
-            document.querySelectorAll('.panel-tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.panel-tab-content').forEach(c => c.classList.remove('active'));
-            btnEl.classList.add('active');
-            document.getElementById('panel-tab-' + tabName).classList.add('active');
-            activePanelTab = tabName;
-
-            if (tabName === 'chat') {
-                document.getElementById('chat-unread-dot').style.display = 'none';
-            }
-
-            // Reja yoki Chat tugmasi bosilganda panel deyarli butun ekranga kengayadi
-            expandPanel();
-        }
-
-        // Panelni deyarli to'liq ekranga kengaytirish (Reja/Chat ochilganda)
-        function expandPanel() {
-            const panel = document.getElementById('bottom-panel');
-            panel.style.maxHeight = '88vh';
-            panelExpanded = true;
-            document.getElementById('back-to-map-btn').style.display = 'flex';
-            setTimeout(() => { if (map) map.invalidateSize(); }, 320);
-        }
-
-        // Panelni kichiklashtirib, xaritani ko'rsatish
-        function collapsePanel() {
-            const panel = document.getElementById('bottom-panel');
-            panel.style.maxHeight = '80px';
-            panelExpanded = false;
-            document.getElementById('back-to-map-btn').style.display = 'none';
-            setTimeout(() => { if (map) map.invalidateSize(); }, 320);
-        }
-
-        // Tortish tutqichi bosilganda: ochiq bo'lsa yopadi, yopiq bo'lsa ochadi
-        function togglePanelExpand() {
-            if (panelExpanded) {
-                collapsePanel();
-            } else {
-                expandPanel();
-            }
-        }
-
-        // Seansni tekshirish
         function checkSession() {
-            const saved = localStorage.getItem('tet_user');
+            const saved = localStorage.getItem('tet_user') || sessionStorage.getItem('tet_user');
             if (saved) {
-                try {
-                    currentUser = JSON.parse(saved);
-                } catch (e) {
-                    localStorage.removeItem('tet_user');
+                try { currentUser = JSON.parse(saved); } catch (e) {
+                    localStorage.removeItem('tet_user'); sessionStorage.removeItem('tet_user');
                     document.getElementById('login-screen').style.display = 'flex';
                     return;
                 }
-                document.getElementById('user-display-name').innerText = currentUser.ism;
+                fillProfileFields();
                 checkGPSPermissionAndProceed();
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
             }
         }
 
-        // Tizimga kirish
         async function tryLogin() {
             const u = document.getElementById('loginUser').value.trim();
             const p = document.getElementById('loginPass').value.trim();
             const err = document.getElementById('login-error');
             const btn = document.getElementById('loginBtn');
+            const remember = document.getElementById('rememberMe').checked;
 
             if (!u || !p) {
-                err.innerText = "Maydonlarni to'ldiring!";
-                err.style.display = 'block';
-                return;
+                err.innerText = "Maydonlarni to'ldiring!"; err.style.display = 'block'; return;
             }
-
-            btn.disabled = true;
-            btn.innerText = "Tekshirilmoqda...";
+            btn.disabled = true; btn.innerText = "Tekshirilmoqda...";
 
             try {
                 const { data, error } = await supabaseClient
-                    .from('xodimlar_gps')
-                    .select('*')
-                    .eq('login', u)
-                    .eq('parol', p)
-                    .single();
+                    .from('xodimlar_gps').select('*').eq('login', u).eq('parol', p).single();
 
                 if (data) {
                     currentUser = data;
-                    localStorage.setItem('tet_user', JSON.stringify(data));
-                    document.getElementById('user-display-name').innerText = currentUser.ism;
+                    const store = remember ? localStorage : sessionStorage;
+                    store.setItem('tet_user', JSON.stringify(data));
+                    fillProfileFields();
                     document.getElementById('login-screen').style.display = 'none';
                     checkGPSPermissionAndProceed();
                 } else {
-                    err.innerText = "Login yoki parol xato!";
-                    err.style.display = 'block';
+                    err.innerText = "Login yoki parol xato!"; err.style.display = 'block';
                 }
             } catch (e) {
-                err.innerText = "Internet aloqasida xatolik. Qayta urinib ko'ring.";
-                err.style.display = 'block';
+                err.innerText = "Internet aloqasida xatolik."; err.style.display = 'block';
             } finally {
-                btn.disabled = false;
-                btn.innerText = "Tizimga Kirish";
+                btn.disabled = false; btn.innerText = "Kirish";
             }
         }
 
-        // Chiqish
+        function fillProfileFields() {
+            const initials = getInitials(currentUser.ism);
+            document.getElementById('dash-greeting').innerHTML = `Salom, ${escapeHtml((currentUser.ism||'').split(' ')[0])}!<span id="dash-date"></span>`;
+            document.getElementById('dash-date').innerText = new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', weekday: 'long' });
+            document.getElementById('info-initials').innerText = initials;
+            document.getElementById('info-name').innerText = currentUser.ism || '—';
+            document.getElementById('profile-initials').innerText = initials;
+            document.getElementById('profile-name').innerText = currentUser.ism || '—';
+            document.getElementById('profile-id').innerText = currentUser.id || '—';
+            document.getElementById('profile-tel').innerText = currentUser.tel || "Kiritilmagan";
+            document.getElementById('profile-login').innerText = currentUser.login || '—';
+        }
+
         function logout() {
             setOfflineBeacon();
             if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            if (tasksInterval) clearInterval(tasksInterval);
-            if (chatInterval) clearInterval(chatInterval);
-            localStorage.removeItem('tet_user');
+            [heartbeatInterval, tasksInterval, chatInterval, addressInterval].forEach(i => i && clearInterval(i));
+            localStorage.removeItem('tet_user'); sessionStorage.removeItem('tet_user');
             location.reload();
         }
 
-        // GPS ruxsatini "ilova kabi" tekshirish: agar allaqachon berilgan bo'lsa qayta so'ramaydi
+        // ============ GPS PERMISSION ============
         async function checkGPSPermissionAndProceed() {
-            if (!("geolocation" in navigator)) {
-                alert("Sizning qurilmangiz geolokalizatsiyani qo'llab-quvvatlamaydi!");
-                return;
-            }
+            if (!("geolocation" in navigator)) { alert("Qurilma geolokalizatsiyani qo'llab-quvvatlamaydi!"); return; }
 
             if ("permissions" in navigator) {
                 try {
                     const status = await navigator.permissions.query({ name: "geolocation" });
-
                     if (status.state === "granted") {
-                        // Ruxsat allaqachon berilgan — darhol, ilova kabi, boshlab yuboramiz
                         document.getElementById('gps-request-screen').style.display = 'none';
                         navigator.geolocation.getCurrentPosition(
-                            (position) => initApp(position.coords.latitude, position.coords.longitude),
+                            (pos) => initApp(pos.coords.latitude, pos.coords.longitude),
                             () => showGpsRequestScreen(),
                             { enableHighAccuracy: true }
                         );
                         return;
                     }
-
                     if (status.state === "denied") {
-                        showGpsRequestScreen("Joylashuv ruxsati brauzer sozlamalarida bloklangan. Iltimos, sayt sozlamalaridan (🔒 belgisi) ruxsat berib, sahifani qayta yuklang.");
+                        showGpsRequestScreen("Joylashuv ruxsati bloklangan. Sayt sozlamalaridan (🔒) ruxsat berib, sahifani qayta yuklang.");
                         return;
                     }
-
-                    // 'prompt' holati — hali so'ralmagan, standart oynani ko'rsatamiz
                     showGpsRequestScreen();
-                } catch (e) {
-                    // Permissions API geolocation uchun ba'zi brauzerlarda yo'q — oddiy oynani ko'rsatamiz
-                    showGpsRequestScreen();
-                }
+                } catch (e) { showGpsRequestScreen(); }
             } else {
                 showGpsRequestScreen();
             }
         }
-
         function showGpsRequestScreen(customText) {
-            document.getElementById('gps-request-text').innerText = customText ||
-                "Ilovadan to'g'ri foydalanish va monitoring tizimida onlayn ko'rinishingiz uchun GPS datchigini faollashtirishingiz va ruxsat berishingiz shart.";
+            document.getElementById('gps-request-text').innerText = customText || "Ilovadan to'g'ri foydalanish va monitoring tizimida onlayn ko'rinishingiz uchun GPS datchigini yoqishingiz kerak.";
             document.getElementById('gps-request-screen').style.display = 'flex';
         }
-
-        // GPS ruxsatini so'rash
         function requestGPSPermission() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // GPS yoqildi va ruxsat berildi
-                        document.getElementById('gps-request-screen').style.display = 'none';
-                        document.getElementById('gps-alert-bar').style.display = 'none';
-                        initApp(position.coords.latitude, position.coords.longitude);
-                    },
-                    (error) => {
-                        alert("GPS aniqlanmadi! Iltimos, sozlamalardan ruxsat bering yoki joylashuv xizmatini yoqing.");
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } else {
-                alert("Sizning qurilmangiz geolokalizatsiyani qo'llab-quvvatlamaydi!");
-            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => { document.getElementById('gps-request-screen').style.display = 'none'; initApp(pos.coords.latitude, pos.coords.longitude); },
+                () => alert("GPS aniqlanmadi! Sozlamalardan ruxsat bering."),
+                { enableHighAccuracy: true }
+            );
         }
 
-        // Ekran o'chib qolishini oldini olish (Wake Lock API)
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) {
-                console.warn('Wake Lock xatoligi:', err);
-            }
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
         }
 
-        // Ilovani to'liq ishga tushirish
+        // ============ APP INIT ============
         function initApp(startLat, startLng) {
-            userLat = startLat;
-            userLng = startLng;
+            userLat = startLat; userLng = startLng;
+            document.getElementById('app-shell').style.display = 'flex';
 
             if (!map) {
-                // Xaritani qurish (faqat bir marta)
-                map = L.map('map', { zoomControl: false }).setView([userLat, userLng], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([userLat, userLng], 15);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
 
-                userMarker = L.circleMarker([userLat, userLng], {
-                    color: '#22a6f2', fillColor: '#00d2d3', fillOpacity: 0.8, radius: 11, weight: 3
+                userMarker = L.marker([userLat, userLng], {
+                    icon: L.divIcon({
+                        className: 'own-marker',
+                        html: `<div style="width:40px;height:40px;border-radius:50%;background:var(--accent);border:3px solid #06210f;box-shadow:0 0 0 4px rgba(34,197,94,0.3);display:flex;align-items:center;justify-content:center;color:#06210f;font-weight:800;font-size:13px;">${getInitials(currentUser.ism)}</div>`,
+                        iconSize: [40, 40]
+                    })
                 }).addTo(map);
             } else {
                 map.setView([userLat, userLng], 15);
@@ -575,306 +637,293 @@
             }
 
             requestWakeLock();
-            sendGPSToDatabase(); // Kirishda darhol joylashuvni va online holatni yuborish
+            sendGPSToDatabase();
             startTracking();
-            startHeartbeat(); // Onlayn holatni doimiy saqlash
-
+            startHeartbeat();
             loadTasks();
             loadChat();
+            updateBatteryInfo();
+            reverseGeocode();
 
             if (tasksInterval) clearInterval(tasksInterval);
             if (chatInterval) clearInterval(chatInterval);
+            if (addressInterval) clearInterval(addressInterval);
             tasksInterval = setInterval(loadTasks, 5000);
             chatInterval = setInterval(loadChat, 4000);
+            addressInterval = setInterval(reverseGeocode, 30000);
+
+            setTimeout(() => map.invalidateSize(), 200);
         }
 
-        // Geolokalizatsiyani doimiy kuzatish (WatchPosition)
+        // ============ VIEW SWITCHING ============
+        function switchView(viewName, btnEl) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            btnEl.classList.add('active');
+            activeView = viewName;
+
+            if (viewName === 'chat') document.getElementById('chat-unread-dot').style.display = 'none';
+            if (viewName === 'xarita' && map) setTimeout(() => map.invalidateSize(), 150);
+        }
+
+        // ============ TRACKING ============
         function startTracking() {
             if (watchId) navigator.geolocation.clearWatch(watchId);
-
             watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     userLat = position.coords.latitude;
                     userLng = position.coords.longitude;
-                    document.getElementById('gps-alert-bar').style.display = 'none';
-
-                    // Xaritadagi marker holatini yangilash
-                    if (userMarker) {
-                        userMarker.setLatLng([userLat, userLng]);
-                    }
-                    
-                    // Bazaga yangi GPS koordinatasini yozish va holatni online qilish
+                    lastSpeedKmh = (position.coords.speed !== null && position.coords.speed !== undefined) ? Math.round(position.coords.speed * 3.6) : null;
+                    document.getElementById('gps-alert-banner').style.display = 'none';
+                    if (userMarker) userMarker.setLatLng([userLat, userLng]);
+                    document.getElementById('info-speed').innerText = (lastSpeedKmh !== null ? lastSpeedKmh : '—') + ' km/soat';
                     sendGPSToDatabase();
                 },
                 (error) => {
-                    console.error("GPS xatosi:", error);
-                    document.getElementById('gps-alert-bar').style.display = 'block';
-                    setOfflineStatus(); // GPS uzilganda offline qilish
+                    document.getElementById('gps-alert-banner').innerText = "⚠️ GPS signali yo'qoldi!";
+                    document.getElementById('gps-alert-banner').style.display = 'block';
+                    setOfflineStatus();
                 },
-                {
-                    enableHighAccuracy: true, // Eng yuqori aniqlikda olish
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
 
-        // Xato haqida faqat bir marta ogohlantirish chiqarish uchun bayroq
-        let rlsWarningShown = false;
-
-        // Bazaga koordinatalarni yuborish
         async function sendGPSToDatabase() {
             if (!currentUser || !userLat || !userLng) return;
             const isoTime = new Date().toISOString();
-
             const { data, error } = await supabaseClient
                 .from('xodimlar_gps')
-                .update({
-                    lat: userLat,
-                    lng: userLng,
-                    status: 'online',
-                    updated_at: isoTime
-                })
-                .eq('id', currentUser.id)
-                .select();
-
+                .update({ lat: userLat, lng: userLng, status: 'online', updated_at: isoTime })
+                .eq('id', currentUser.id).select();
             checkWriteResult(data, error);
+            document.getElementById('info-updated').innerText = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // UPDATE so'rovi haqiqatan ham bazaga yozildimi tekshirish.
-        // Supabase'da RLS (Row Level Security) UPDATE uchun ruxsat bermasa, xato chiqmaydi,
-        // lekin data bo'sh massiv qaytadi — ya'ni hech qanday qator o'zgarmagan bo'ladi.
         function checkWriteResult(data, error) {
             if (error) {
                 console.error('Bazaga yozishda xatolik:', error.message);
-                if (!rlsWarningShown) {
-                    rlsWarningShown = true;
-                    alert("Xatolik: joylashuvni bazaga yozib bo'lmadi.\n\n" + error.message);
-                }
+                if (!rlsWarningShown) { rlsWarningShown = true; alert("Xatolik: joylashuvni bazaga yozib bo'lmadi.\n\n" + error.message); }
                 return;
             }
             if (!data || data.length === 0) {
-                console.warn('Yozuv 0 qatorga ta\'sir qildi — ehtimol Supabase RLS (Row Level Security) UPDATE ruxsatini bermayapti.');
-                if (!rlsWarningShown) {
-                    rlsWarningShown = true;
-                    alert("Diqqat: joylashuv bazaga yozilmayapti!\n\nSupabase'da 'xodimlar_gps' jadvali uchun UPDATE ruxsati (RLS policy) yo'q bo'lishi mumkin. Administratorga xabar bering.");
-                }
+                console.warn('0 qatorga ta\'sir qildi — RLS UPDATE ruxsati yo\'q bo\'lishi mumkin.');
+                if (!rlsWarningShown) { rlsWarningShown = true; alert("Diqqat: joylashuv bazaga yozilmayapti!\n\nSupabase RLS sozlamalarini tekshiring."); }
             }
         }
 
-        // Heartbeat - Agar foydalanuvchi qimirlamasa ham har 5 soniyada "men onlaynman" signalini yuborish
         function startHeartbeat() {
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(async () => {
                 if (!currentUser) return;
                 const isoTime = new Date().toISOString();
-
                 const { data, error } = await supabaseClient
-                    .from('xodimlar_gps')
-                    .update({
-                        status: 'online',
-                        updated_at: isoTime
-                    })
-                    .eq('id', currentUser.id)
-                    .select();
-
+                    .from('xodimlar_gps').update({ status: 'online', updated_at: isoTime }).eq('id', currentUser.id).select();
                 checkWriteResult(data, error);
-
-                document.getElementById('online-badge').style.background = 'var(--accent-color)';
-                document.getElementById('online-badge').querySelector('span').innerText = 'ONLINE';
+                setDashStatus(true);
             }, 5000);
         }
 
         async function setOfflineStatus() {
             if (!currentUser) return;
-            await supabaseClient
-                .from('xodimlar_gps')
-                .update({ status: 'offline' })
-                .eq('id', currentUser.id);
-
-            document.getElementById('online-badge').style.background = '#576574';
-            document.getElementById('online-badge').querySelector('span').innerText = 'OFFLINE';
+            await supabaseClient.from('xodimlar_gps').update({ status: 'offline' }).eq('id', currentUser.id);
+            setDashStatus(false);
         }
 
-        // Sahifa yopilayotganda/fonga o'tayotganda ham ishonchli tarzda "offline" deb yozish.
-        // fetch({keepalive:true}) ishlatiladi, chunki beforeunload paytida oddiy async so'rovlar
-        // ko'pincha yakunlanmay qoladi.
+        function setDashStatus(isOnline) {
+            document.getElementById('dash-status-dot').className = 'dot' + (isOnline ? '' : ' off');
+            document.getElementById('dash-status-text').innerText = isOnline ? 'Online' : 'Offline';
+            document.getElementById('profile-status').innerText = isOnline ? 'Online' : 'Offline';
+        }
+
         function setOfflineBeacon() {
             if (!currentUser) return;
             try {
                 const url = `${SUPABASE_URL}/rest/v1/xodimlar_gps?id=eq.${encodeURIComponent(currentUser.id)}`;
                 fetch(url, {
-                    method: 'PATCH',
-                    keepalive: true,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'return=minimal'
-                    },
+                    method: 'PATCH', keepalive: true,
+                    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
                     body: JSON.stringify({ status: 'offline' })
                 }).catch(() => {});
-            } catch (e) { /* jim o'tkazamiz - sahifa allaqachon yopilayotgan bo'lishi mumkin */ }
+            } catch (e) {}
         }
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                setOfflineBeacon();
-            } else if (document.visibilityState === 'visible' && currentUser && map) {
-                // Foydalanuvchi ilovaga qaytdi — qayta onlayn qilamiz va ekran qulfini tiklaymiz
-                sendGPSToDatabase();
-                requestWakeLock();
-            }
+            if (document.visibilityState === 'hidden') setOfflineBeacon();
+            else if (document.visibilityState === 'visible' && currentUser && map) { sendGPSToDatabase(); requestWakeLock(); }
         });
         window.addEventListener('beforeunload', setOfflineBeacon);
         window.addEventListener('pagehide', setOfflineBeacon);
-
-        // Internet uzilganda: bazaga "offline" deb yozib bo'lmaydi (chunki internet yo'q),
-        // lekin xodimning o'z ekranida buni darhol ko'rsatamiz. Admin tomonida esa
-        // "so'nggi faollikdan 15 soniyadan ko'p vaqt o'tgan bo'lsa offline" degan tekshiruv
-        // allaqachon ishlaydi — shuning uchun internet uzilsa, admin panelda ham
-        // 15 soniya ichida avtomatik "offline" bo'lib ko'rinadi.
         window.addEventListener('offline', () => {
-            document.getElementById('online-badge').style.background = '#576574';
-            document.getElementById('online-badge').querySelector('span').innerText = 'OFFLINE';
-            document.getElementById('gps-alert-bar').innerText = '⚠️ Internet aloqasi yo\'qoldi! Ulanish tiklanguncha holat yangilanmaydi.';
-            document.getElementById('gps-alert-bar').style.display = 'block';
+            setDashStatus(false);
+            document.getElementById('gps-alert-banner').innerText = "⚠️ Internet aloqasi yo'qoldi!";
+            document.getElementById('gps-alert-banner').style.display = 'block';
         });
         window.addEventListener('online', () => {
-            document.getElementById('gps-alert-bar').style.display = 'none';
+            document.getElementById('gps-alert-banner').style.display = 'none';
             if (currentUser) sendGPSToDatabase();
         });
 
-        // Vazifalarni yuklash
-        let currentTasks = [];
+        // ============ BATTERY ============
+        async function updateBatteryInfo() {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    const render = () => {
+                        const pct = Math.round(battery.level * 100) + '%';
+                        document.getElementById('dash-battery').innerText = pct;
+                        document.getElementById('info-battery').innerText = pct;
+                    };
+                    render();
+                    battery.addEventListener('levelchange', render);
+                } catch (e) { hideBatteryUI(); }
+            } else { hideBatteryUI(); }
+        }
+        function hideBatteryUI() {
+            document.getElementById('dash-battery').innerText = 'N/A';
+            document.getElementById('info-battery-row').style.display = 'none';
+        }
+
+        // ============ REVERSE GEOCODE (Manzil) ============
+        async function reverseGeocode() {
+            if (!userLat || !userLng) return;
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLng}&zoom=16&addressdetails=1`);
+                const data = await res.json();
+                let text = data.display_name || `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+                const addr = data.address || {};
+                const parts = [addr.suburb || addr.village || addr.town || addr.county, addr.road].filter(Boolean);
+                if (parts.length) text = parts.join(', ');
+                document.getElementById('info-address').innerText = text;
+            } catch (e) {
+                document.getElementById('info-address').innerText = `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+            }
+        }
+
+        // ============ ROUTE OVERLAY (filter toggle on map) ============
+        function toggleRouteOverlay() {
+            routeOverlayVisible = !routeOverlayVisible;
+            document.getElementById('filter-btn').classList.toggle('active-filter', routeOverlayVisible);
+            drawRouteOverlay();
+        }
+        function drawRouteOverlay() {
+            routeOverlayLayers.forEach(l => map.removeLayer(l));
+            routeOverlayLayers = [];
+            if (!routeOverlayVisible || !currentTasks.length) return;
+
+            const latlngs = [];
+            currentTasks.forEach(t => {
+                if (t.lat == null || t.lng == null) return;
+                const color = t.bajarildi ? '#22c55e' : '#ef4444';
+                const m = L.marker([t.lat, t.lng], {
+                    icon: L.divIcon({
+                        className: 'route-point',
+                        html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:2px solid #06210f;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:12px;">${escapeHtml(t.nuqta_nomi)}</div>`,
+                        iconSize: [28, 28]
+                    })
+                }).addTo(map);
+                routeOverlayLayers.push(m);
+                latlngs.push([t.lat, t.lng]);
+            });
+            if (latlngs.length > 1) {
+                const line = L.polyline(latlngs, { color: '#22c55e', weight: 3, opacity: 0.6, dashArray: '6 8' }).addTo(map);
+                routeOverlayLayers.push(line);
+            }
+        }
+
+        // ============ TASKS ============
         async function loadTasks() {
             if (!currentUser) return;
-            
             const { data: tasks, error } = await supabaseClient
-                .from('vazifalar')
-                .select('*')
-                .eq('xodim_id', currentUser.id)
-                .order('nuqta_nomi', { ascending: true });
+                .from('vazifalar').select('*').eq('xodim_id', currentUser.id).order('nuqta_nomi', { ascending: true });
 
             if (tasks) {
                 currentTasks = tasks;
-                const container = document.getElementById('tasks-container');
-                container.innerHTML = '';
+                renderTaskList(document.getElementById('tasks-container'), tasks, true);
+                renderTaskList(document.getElementById('dash-upcoming-list'), tasks.filter(t => !t.bajarildi).slice(0, 3), false);
 
-                if (tasks.length === 0) {
-                    container.innerHTML = `<p style="text-align: center; color: #a4b0be; font-size: 14px; padding: 10px;">Hozircha hech qanday reja biriktirilmagan.</p>`;
-                    document.getElementById('route-progress-text').innerText = '0/0';
-                    const bar0 = document.getElementById('worker-progress-bar');
-                    bar0.style.width = '0%';
-                    bar0.innerText = '0%';
-                    return;
-                }
+                const completed = tasks.filter(t => t.bajarildi).length;
+                const total = tasks.length;
+                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-                let completed = 0;
-                tasks.forEach(t => {
-                    if (t.bajarildi) completed++;
+                document.getElementById('tasks-progress-text').innerText = `${completed}/${total}`;
+                document.getElementById('tasks-progress-fill').style.width = percent + '%';
+                document.getElementById('dash-progress-text').innerText = `${completed}/${total} (${percent}%)`;
+                document.getElementById('dash-progress-fill').style.width = percent + '%';
 
-                    const item = document.createElement('div');
-                    item.className = `task-item ${t.bajarildi ? 'completed' : 'pending'}`;
-                    const nuqtaNomi = escapeHtml(t.nuqta_nomi);
-                    item.innerHTML = `
-                        <div class="task-info">
-                            <div class="task-badge ${t.bajarildi ? 'completed' : 'pending'}">${nuqtaNomi}</div>
-                            <div>
-                                <b style="font-size: 15px;">Nuqta: ${nuqtaNomi}</b><br>
-                                <span style="font-size: 12px; color: #747d8c;">${t.bajarildi ? 'Bajarildi ✅' : 'Kutilmoqda...'}</span>
-                            </div>
-                        </div>
+                if (routeOverlayVisible) drawRouteOverlay();
+            }
+        }
+
+        function renderTaskList(container, tasks, withToggle) {
+            if (!container) return;
+            container.innerHTML = '';
+            if (tasks.length === 0) {
+                container.innerHTML = `<p class="empty-state">${withToggle ? "Hozircha hech qanday reja biriktirilmagan." : "Barcha nuqtalar bajarildi 🎉"}</p>`;
+                return;
+            }
+            tasks.forEach(t => {
+                const nuqtaNomi = escapeHtml(t.nuqta_nomi);
+                const item = document.createElement('div');
+                item.className = `task-item ${t.bajarildi ? 'completed' : 'pending'}`;
+                item.innerHTML = `
+                    <div class="task-info">
+                        <div class="task-badge ${t.bajarildi ? 'completed' : 'pending'}">${nuqtaNomi}</div>
                         <div>
-                            <label class="switch">
-                                <input type="checkbox" ${t.bajarildi ? 'checked' : ''} onchange="toggleTaskStatus(${t.id}, this.checked)">
-                                <span class="slider"></span>
-                            </label>
+                            <div class="task-name">Nuqta: ${nuqtaNomi}</div>
+                            <div class="task-status">${t.bajarildi ? 'Bajarildi ✅' : 'Kutilmoqda...'}</div>
                         </div>
-                    `;
-                    container.appendChild(item);
-                });
-
-                document.getElementById('route-progress-text').innerText = `${completed}/${tasks.length}`;
-
-                // Foiz progress-barni yangilash — xodim ham qancha bajarganini ko'radi
-                const percent = Math.round((completed / tasks.length) * 100);
-                const bar = document.getElementById('worker-progress-bar');
-                bar.style.width = percent + '%';
-                bar.innerText = percent + '%';
-            }
+                    </div>
+                    ${withToggle ? `
+                    <label class="switch">
+                        <input type="checkbox" ${t.bajarildi ? 'checked' : ''} onchange="toggleTaskStatus(${t.id}, this.checked)">
+                        <span class="slider"></span>
+                    </label>` : ''}
+                `;
+                container.appendChild(item);
+            });
         }
 
-        // Vazifa holatini o'zgartirish (Bajarildi / Kutilmoqda)
         async function toggleTaskStatus(taskId, isChecked) {
-            const { error } = await supabaseClient
-                .from('vazifalar')
-                .update({ bajarildi: isChecked })
-                .eq('id', taskId);
-
-            if (!error) {
-                loadTasks();
-            } else {
-                alert("Xatolik yuz berdi. Internetni tekshiring!");
-            }
+            const { error } = await supabaseClient.from('vazifalar').update({ bajarildi: isChecked }).eq('id', taskId);
+            if (!error) loadTasks(); else alert("Xatolik yuz berdi. Internetni tekshiring!");
         }
 
-        // Chat yuklash (Maksimal 30 xabar chegarasi bilan)
+        // ============ CHAT ============
         async function loadChat() {
             if (!currentUser) return;
-
-            const { data, error } = await supabaseClient
-                .from('chat_messages')
-                .select('*')
+            const { data } = await supabaseClient
+                .from('chat_messages').select('*')
                 .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
                 .order('created_at', { ascending: true });
 
             if (data) {
                 const limit = 30;
                 if (data.length > limit) {
-                    const deleteCount = data.length - limit;
-                    const oldMessages = data.slice(0, deleteCount);
-                    
-                    for (let i = 0; i < oldMessages.length; i++) {
-                        await supabaseClient.from('chat_messages').delete().eq('id', oldMessages[i].id);
-                    }
-                    loadChat();
-                    return;
+                    const oldMessages = data.slice(0, data.length - limit);
+                    for (let i = 0; i < oldMessages.length; i++) await supabaseClient.from('chat_messages').delete().eq('id', oldMessages[i].id);
+                    loadChat(); return;
                 }
-
-                const container = document.getElementById('chat-box-container');
-                container.innerHTML = data.map(m => {
+                const wrap = document.getElementById('chat-messages-wrap');
+                wrap.innerHTML = data.map(m => {
                     const isMe = m.sender_id === currentUser.id;
                     return `<div class="chat-bubble ${isMe ? 'msg-out' : 'msg-in'}">${escapeHtml(m.message)}</div>`;
                 }).join('');
-                container.scrollTop = container.scrollHeight;
+                wrap.scrollTop = wrap.scrollHeight;
 
-                // Agar Chat bo'limi ochiq bo'lmasa va yangi xabar kelgan bo'lsa — qizil nuqta ko'rsatamiz
-                if (data.length > lastSeenChatCount && activePanelTab !== 'chat') {
-                    document.getElementById('chat-unread-dot').style.display = 'inline-block';
+                if (data.length > lastSeenChatCount && activeView !== 'chat') {
+                    document.getElementById('chat-unread-dot').style.display = 'block';
                 }
                 lastSeenChatCount = data.length;
             }
         }
 
-        // Chat xabar yuborish
         async function sendChatMessage() {
             const input = document.getElementById('chatMsgInput');
             const msg = input.value.trim();
             if (!currentUser || !msg) return;
-
-            const { error } = await supabaseClient
-                .from('chat_messages')
-                .insert([{
-                    sender_id: currentUser.id,
-                    receiver_id: 'admin',
-                    message: msg
-                }]);
-
-            if (!error) {
-                input.value = '';
-                loadChat();
-            }
+            const { error } = await supabaseClient.from('chat_messages').insert([{ sender_id: currentUser.id, receiver_id: 'admin', message: msg }]);
+            if (!error) { input.value = ''; loadChat(); }
         }
     </script>
 </body>
