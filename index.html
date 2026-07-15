@@ -62,8 +62,8 @@
         #map { flex-grow: 1; height: 100vh; z-index: 1; background: #e5e3de; }
         
         /* Tab tugmalari */
-        .tab-buttons { display: flex; margin-bottom: 25px; gap: 10px; }
-        .tab-btn { flex: 1; padding: 16px 10px; background: #341f97; border: none; color: white; border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: bold; -webkit-tap-highlight-color: transparent; }
+        .tab-buttons { display: flex; flex-wrap: wrap; margin-bottom: 20px; gap: 8px; }
+        .tab-btn { flex: 1 1 30%; padding: 13px 6px; background: #341f97; border: none; color: white; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: bold; -webkit-tap-highlight-color: transparent; }
         .tab-btn.active { background: var(--accent-color); color: #1e272e; }
         
         .tab-content { display: none; }
@@ -149,6 +149,8 @@
             <button class="tab-btn active" data-tab="monitoring" onclick="switchTab('monitoring', this)">Kuzatish</button>
             <button class="tab-btn" data-tab="xodimlar" onclick="switchTab('xodimlar', this)">Xodimlar</button>
             <button class="tab-btn" data-tab="reja" onclick="switchTab('reja', this)">Reja berish</button>
+            <button class="tab-btn" data-tab="transformatorlar" onclick="switchTab('transformatorlar', this)">Transformatorlar</button>
+            <button class="tab-btn" data-tab="sozlamalar" onclick="switchTab('sozlamalar', this)">Sozlamalar</button>
         </div>
 
         <!-- 1. KUZATISH TAB -->
@@ -236,6 +238,33 @@
             <h4 style="margin-top:20px; font-size: 16px; border-bottom: 1px solid #2f3542; padding-bottom: 5px;">Belgilangan nuqtalar:</h4>
             <ul id="temp-points-list" style="font-size:14px; padding-left:20px; color:#c8d6e5; line-height: 1.6;"></ul>
         </div>
+
+        <!-- 4. TRANSFORMATORLAR TAB -->
+        <div id="tab-transformatorlar" class="tab-content">
+            <h3 style="font-size: 19px;">⚡ Transformatorlarni Belgilash</h3>
+            <p style="font-size:14px; color:#c8d6e5; line-height: 1.4;">Xaritadan transformator joylashgan nuqtani bosing — nomini kiritishingiz so'raladi. Belgilangan transformatorlar barcha xodimlarning xaritasida ham ko'rinadi.</p>
+            <button class="btn-action btn-warning" id="transformer-mark-btn" onclick="toggleTransformerMarkMode()" style="margin-top:10px;">📍 Xaritadan belgilashni boshlash</button>
+
+            <h4 style="margin-top:22px; font-size: 16px; border-bottom: 1px solid #2f3542; padding-bottom: 5px;">Mavjud transformatorlar:</h4>
+            <div id="transformatorlar-list" style="margin-top:12px;">Yuklanmoqda...</div>
+        </div>
+
+        <!-- 5. SOZLAMALAR TAB -->
+        <div id="tab-sozlamalar" class="tab-content">
+            <h3 style="font-size: 19px;">⚙️ Admin Sozlamalari</h3>
+            <p style="font-size:14px; color:#c8d6e5; line-height: 1.4; margin-bottom:16px;">Admin panelga kirish uchun login va parolni shu yerdan o'zgartirishingiz mumkin.</p>
+            <div class="form-group">
+                <label>Login</label>
+                <input type="text" id="settingsLogin" placeholder="admin">
+            </div>
+            <div class="form-group password-field">
+                <label>Yangi parol</label>
+                <input type="password" id="settingsParol" placeholder="Yangi parolni kiriting">
+                <button type="button" class="password-toggle" onclick="toggleSettingsPasswordVisibility()">👁</button>
+            </div>
+            <button class="btn-action" onclick="saveAdminSettings()">Saqlash</button>
+            <p id="settings-msg" style="margin-top:12px; font-size:14px; font-weight:bold; display:none;"></p>
+        </div>
     </div>
 
     <div id="map"></div>
@@ -276,16 +305,35 @@
             }
         }
 
-        function tryAdminLogin() {
-            const user = document.getElementById('adminUser').value;
-            const pass = document.getElementById('adminPass').value;
-            if (user === 'admin' && pass === 'admin123') {
-                localStorage.setItem('tet_admin_session', 'true');
-                document.getElementById('admin-login-screen').style.display = 'none';
-                initSystem();
-            } else {
-                document.getElementById('loginErr').innerText = "Login yoki parol xato!";
-                document.getElementById('loginErr').style.display = 'block';
+        async function tryAdminLogin() {
+            const btn = event.target;
+            const user = document.getElementById('adminUser').value.trim();
+            const pass = document.getElementById('adminPass').value.trim();
+            const errEl = document.getElementById('loginErr');
+            errEl.style.display = 'none';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('admin_settings').select('*').eq('id', 1).single();
+
+                // Agar admin_settings jadvali hali sozlanmagan bo'lsa — standart qiymatlarga tushamiz
+                const validLogin = data ? data.login : 'admin';
+                const validParol = data ? data.parol : 'admin123';
+
+                if (user === validLogin && pass === validParol) {
+                    localStorage.setItem('tet_admin_session', 'true');
+                    document.getElementById('admin-login-screen').style.display = 'none';
+                    initSystem();
+                } else {
+                    errEl.innerText = "Login yoki parol xato!";
+                    errEl.style.display = 'block';
+                }
+            } catch (e) {
+                errEl.innerText = "Ulanishda xatolik. Qayta urining.";
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
             }
         }
 
@@ -300,6 +348,9 @@
         let selectedRouteMarkers = [];
         let globalXodimlarList = [];
         let currentActiveTab = 'monitoring';
+        let transformerMarkMode = false;
+        let transformerMarkers = [];
+        let globalTransformerList = [];
 
         function initSystem() {
             map = L.map('map').setView([41.295, 69.695], 13);
@@ -325,10 +376,14 @@
                     }).addTo(map);
                     routeMarkers.push(m);
                     updateTempPointsList();
+                } else if (currentActiveTab === 'transformatorlar' && transformerMarkMode) {
+                    addTransformerAtPoint(e.latlng.lat, e.latlng.lng);
                 }
             });
 
             fetchXodimlar();
+            fetchTransformatorlar();
+            loadAdminSettings();
             setInterval(fetchXodimlar, 4000); 
             setInterval(loadChat, 4000);
             setInterval(fetchSelectedXodimRoute, 4000);
@@ -342,6 +397,12 @@
             document.getElementById('tab-' + tabName).classList.add('active');
             currentActiveTab = tabName;
             clearTempRoute();
+
+            if (tabName !== 'transformatorlar' && transformerMarkMode) {
+                transformerMarkMode = false;
+                const btn = document.getElementById('transformer-mark-btn');
+                if (btn) btn.innerText = "📍 Xaritadan belgilashni boshlash";
+            }
             
             if (map) {
                 setTimeout(() => { map.invalidateSize(); }, 200);
@@ -706,6 +767,121 @@
             await supabaseClient.from('chat_messages').insert([{ sender_id: 'admin', receiver_id: xId, message: msg }]);
             document.getElementById('chatInput').value = '';
             loadChat();
+        }
+
+        // ============ TRANSFORMATORLAR ============
+        function toggleTransformerMarkMode() {
+            transformerMarkMode = !transformerMarkMode;
+            const btn = document.getElementById('transformer-mark-btn');
+            btn.innerText = transformerMarkMode ? "✖ Belgilashni to'xtatish (xaritani bosing)" : "📍 Xaritadan belgilashni boshlash";
+        }
+
+        async function addTransformerAtPoint(lat, lng) {
+            const nomi = prompt("Transformator nomini kiriting (masalan: TP-12):");
+            if (!nomi || !nomi.trim()) return;
+            const quvvat = prompt("Quvvati (ixtiyoriy, masalan: 250 kVA):") || '';
+
+            const { error } = await supabaseClient
+                .from('transformatorlar')
+                .insert([{ nomi: nomi.trim(), quvvat: quvvat.trim(), lat, lng }]);
+
+            if (error) {
+                alert("Saqlashda xatolik: " + error.message);
+            } else {
+                fetchTransformatorlar();
+            }
+        }
+
+        async function fetchTransformatorlar() {
+            try {
+                const { data, error } = await supabaseClient.from('transformatorlar').select('*').order('nomi');
+                if (error) throw error;
+                globalTransformerList = data || [];
+
+                // Xaritadagi belgilarni yangilash
+                transformerMarkers.forEach(m => map.removeLayer(m));
+                transformerMarkers = [];
+                globalTransformerList.forEach(t => {
+                    const m = L.marker([t.lat, t.lng], {
+                        icon: L.divIcon({
+                            className: 'transformer-icon',
+                            html: `<div style="background:#feca57; color:#1e272e; font-weight:bold; border-radius:10px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:2px solid #1e272e; font-size:16px; box-shadow: 0 3px 8px rgba(0,0,0,0.35);">⚡</div>`,
+                            iconSize: [34, 34]
+                        })
+                    }).addTo(map).bindPopup(`<b>${escapeHtml(t.nomi)}</b>${t.quvvat ? '<br>Quvvat: ' + escapeHtml(t.quvvat) : ''}`);
+                    transformerMarkers.push(m);
+                });
+
+                // Ro'yxatni yangilash
+                const listDiv = document.getElementById('transformatorlar-list');
+                if (globalTransformerList.length === 0) {
+                    listDiv.innerHTML = `<p style="color:#a4b0be; font-size:13px;">Hali transformator belgilanmagan.</p>`;
+                    return;
+                }
+                listDiv.innerHTML = globalTransformerList.map(t => `
+                    <div class="xodim-item" style="cursor:default;">
+                        <b style="font-size:15px;">⚡ ${escapeHtml(t.nomi)}</b>
+                        ${t.quvvat ? `<br><span style="font-size:12px; color:#c8d6e5;">Quvvat: ${escapeHtml(t.quvvat)}</span>` : ''}
+                        <div style="margin-top:10px; display:flex; gap:8px;">
+                            <button class="btn-action btn-warning" style="padding:8px; font-size:13px;" onclick="map.setView([${t.lat}, ${t.lng}], 17)">Xaritada ko'rish</button>
+                            <button class="btn-action btn-danger" style="padding:8px; font-size:13px;" onclick="deleteTransformator(${t.id})">O'chirish</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteTransformator(id) {
+            if (confirm("Ushbu transformatorni o'chirishni tasdiqlaysizmi?")) {
+                const { error } = await supabaseClient.from('transformatorlar').delete().eq('id', id);
+                if (error) { alert("O'chirishda xatolik: " + error.message); return; }
+                fetchTransformatorlar();
+            }
+        }
+
+        // ============ ADMIN SOZLAMALARI ============
+        async function loadAdminSettings() {
+            try {
+                const { data, error } = await supabaseClient.from('admin_settings').select('*').eq('id', 1).single();
+                if (data) {
+                    document.getElementById('settingsLogin').value = data.login;
+                }
+            } catch (e) { /* jadval hali sozlanmagan bo'lishi mumkin */ }
+        }
+
+        function toggleSettingsPasswordVisibility() {
+            const field = document.getElementById('settingsParol');
+            field.type = field.type === 'password' ? 'text' : 'password';
+        }
+
+        async function saveAdminSettings() {
+            const login = document.getElementById('settingsLogin').value.trim();
+            const parol = document.getElementById('settingsParol').value.trim();
+            const msgEl = document.getElementById('settings-msg');
+
+            if (!login || !parol) {
+                msgEl.style.color = '#ff6b6b';
+                msgEl.innerText = "Login va parolni to'liq kiriting!";
+                msgEl.style.display = 'block';
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('admin_settings')
+                .update({ login, parol })
+                .eq('id', 1);
+
+            if (error) {
+                msgEl.style.color = '#ff6b6b';
+                msgEl.innerText = "Xatolik: " + error.message;
+            } else {
+                msgEl.style.color = '#10ac84';
+                msgEl.innerText = "Saqlandi! Keyingi safar kirishda yangi login/parolni ishlating.";
+                document.getElementById('settingsParol').value = '';
+            }
+            msgEl.style.display = 'block';
         }
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
