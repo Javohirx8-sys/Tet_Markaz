@@ -52,6 +52,7 @@
             border-radius: 50%; animation: spin 0.9s linear infinite; margin-top: 22px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseRing { 0% { transform: scale(0.85); opacity: 0.9; } 100% { transform: scale(1.6); opacity: 0; } }
 
         /* ============ LOGIN ============ */
         #login-screen {
@@ -352,8 +353,8 @@
             <div id="view-xarita" class="app-view">
                 <div class="map-view-header">
                     <div class="view-title">Xarita</div>
-                    <button class="icon-btn" id="filter-btn" onclick="toggleRouteOverlay()" title="Marshrutni ko'rsatish">
-                        <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16l-6 8v6l-4 2v-8L4 4z"/></svg>
+                    <button class="icon-btn" id="filter-btn" onclick="onRouteButtonClick()" title="Marshrut qurish">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
                     </button>
                 </div>
                 <div id="map"></div>
@@ -468,10 +469,12 @@
         let map, userMarker, watchId = null;
         let userLat = null, userLng = null, lastSpeedKmh = null;
         let wakeLock = null;
-        let heartbeatInterval = null, tasksInterval = null, chatInterval = null, addressInterval = null;
+        let heartbeatInterval = null, tasksInterval = null, chatInterval = null, addressInterval = null, transformerInterval = null;
+        let transformerMarkers = [];
         let currentTasks = [];
-        let routeOverlayVisible = false;
-        let routeOverlayLayers = [];
+        let routeOverlayLayers = []; // eski nom, endi ishlatilmaydi (uyg'unlik uchun qoldirilgan)
+        let taskMarkers = [];
+        let activeRouteLine = null;
         let activeView = 'boshqaruv';
         let lastSeenChatCount = 0;
         let rlsWarningShown = false;
@@ -644,13 +647,16 @@
             loadChat();
             updateBatteryInfo();
             reverseGeocode();
+            fetchTransformatorlar();
 
             if (tasksInterval) clearInterval(tasksInterval);
             if (chatInterval) clearInterval(chatInterval);
             if (addressInterval) clearInterval(addressInterval);
+            if (transformerInterval) clearInterval(transformerInterval);
             tasksInterval = setInterval(loadTasks, 5000);
             chatInterval = setInterval(loadChat, 4000);
             addressInterval = setInterval(reverseGeocode, 30000);
+            transformerInterval = setInterval(fetchTransformatorlar, 60000);
 
             setTimeout(() => map.invalidateSize(), 200);
         }
@@ -800,34 +806,128 @@
             }
         }
 
-        // ============ ROUTE OVERLAY (filter toggle on map) ============
-        function toggleRouteOverlay() {
-            routeOverlayVisible = !routeOverlayVisible;
-            document.getElementById('filter-btn').classList.toggle('active-filter', routeOverlayVisible);
-            drawRouteOverlay();
-        }
-        function drawRouteOverlay() {
-            routeOverlayLayers.forEach(l => map.removeLayer(l));
-            routeOverlayLayers = [];
-            if (!routeOverlayVisible || !currentTasks.length) return;
+        // ============ TRANSFORMATORLAR (admin belgilagan, barcha xodimlarga umumiy) ============
+        async function fetchTransformatorlar() {
+            if (!map) return;
+            try {
+                const { data, error } = await supabaseClient.from('transformatorlar').select('*');
+                if (error) return;
 
-            const latlngs = [];
+                transformerMarkers.forEach(m => map.removeLayer(m));
+                transformerMarkers = [];
+
+                (data || []).forEach(t => {
+                    const m = L.marker([t.lat, t.lng], {
+                        icon: L.divIcon({
+                            className: 'transformer-icon',
+                            html: `<div style="background:#f59e0b; color:#1e1400; font-weight:800; border-radius:9px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:2px solid #06210f; font-size:15px; box-shadow:0 3px 8px rgba(0,0,0,0.4);">⚡</div>`,
+                            iconSize: [30, 30]
+                        })
+                    }).addTo(map).bindPopup(`<b>${escapeHtml(t.nomi)}</b>${t.quvvat ? '<br>Quvvat: ' + escapeHtml(t.quvvat) : ''}`);
+                    transformerMarkers.push(m);
+                });
+            } catch (e) { console.warn('Transformatorlarni yuklashda xatolik:', e); }
+        }
+
+        // ============ VAZIFA NUQTALARI XARITADA (doim avtomatik ko'rinadi) ============
+        function distanceMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function renderTaskMarkersOnMap() {
+            if (!map) return;
+            taskMarkers.forEach(m => map.removeLayer(m));
+            taskMarkers = [];
+            if (!currentTasks.length) return;
+
+            // Eng yaqin bajarilmagan nuqtani topish — u alohida (kattaroq, pulsatsiyali) ko'rsatiladi
+            let nearestTask = null, nearestDist = Infinity;
+            if (userLat && userLng) {
+                currentTasks.forEach(t => {
+                    if (t.bajarildi || t.lat == null || t.lng == null) return;
+                    const d = distanceMeters(userLat, userLng, t.lat, t.lng);
+                    if (d < nearestDist) { nearestDist = d; nearestTask = t; }
+                });
+            }
+
             currentTasks.forEach(t => {
                 if (t.lat == null || t.lng == null) return;
+                const isNearest = nearestTask && t.id === nearestTask.id;
                 const color = t.bajarildi ? '#22c55e' : '#ef4444';
-                const m = L.marker([t.lat, t.lng], {
+                const size = isNearest ? 38 : 28;
+                const pulseRing = isNearest ? `<div style="position:absolute; inset:-8px; border-radius:50%; border:2px solid ${color}; animation: pulseRing 1.6s infinite;"></div>` : '';
+
+                const marker = L.marker([t.lat, t.lng], {
                     icon: L.divIcon({
-                        className: 'route-point',
-                        html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:2px solid #06210f;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:12px;">${escapeHtml(t.nuqta_nomi)}</div>`,
-                        iconSize: [28, 28]
+                        className: 'task-point-marker',
+                        html: `<div style="position:relative; width:${size}px; height:${size}px;">${pulseRing}<div style="width:${size}px; height:${size}px; border-radius:50%; background:${color}; border:2px solid #06210f; display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:${isNearest ? 13 : 11}px;">${escapeHtml(t.nuqta_nomi)}</div></div>`,
+                        iconSize: [size, size]
                     })
                 }).addTo(map);
-                routeOverlayLayers.push(m);
-                latlngs.push([t.lat, t.lng]);
+
+                marker.on('click', () => {
+                    if (t.bajarildi) { alert(`Nuqta ${t.nuqta_nomi}: bajarilgan ✅`); return; }
+                    if (confirm(`${t.nuqta_nomi} nuqtasiga marshrut tuzilsinmi?`)) {
+                        buildRouteToPoint(t);
+                    }
+                });
+
+                taskMarkers.push(marker);
             });
-            if (latlngs.length > 1) {
-                const line = L.polyline(latlngs, { color: '#22c55e', weight: 3, opacity: 0.6, dashArray: '6 8' }).addTo(map);
-                routeOverlayLayers.push(line);
+        }
+
+        // ============ HAQIQIY MARSHRUT (yo'llar bo'ylab, OSRM orqali) ============
+        async function drawRoute(coordsArr) {
+            clearActiveRoute();
+            const coordStr = coordsArr.map(c => `${c[1]},${c[0]}`).join(';');
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`);
+                const data = await res.json();
+                if (data.routes && data.routes[0]) {
+                    const latlngs = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    activeRouteLine = L.polyline(latlngs, { color: '#3b82f6', weight: 5, opacity: 0.85 }).addTo(map);
+                    map.fitBounds(activeRouteLine.getBounds(), { padding: [50, 50] });
+                    document.getElementById('filter-btn').classList.add('active-filter');
+                } else {
+                    alert("Marshrut topilmadi. Internetni tekshiring.");
+                }
+            } catch (e) {
+                alert("Marshrutni tuzishda xatolik yuz berdi. Internetni tekshiring.");
+            }
+        }
+
+        function clearActiveRoute() {
+            if (activeRouteLine) { map.removeLayer(activeRouteLine); activeRouteLine = null; }
+            document.getElementById('filter-btn').classList.remove('active-filter');
+        }
+
+        async function buildRouteToPoint(task) {
+            if (!userLat || !userLng) { alert("Joriy joylashuv hali aniqlanmagan."); return; }
+            await drawRoute([[userLat, userLng], [task.lat, task.lng]]);
+        }
+
+        async function buildFullRoute() {
+            const pending = currentTasks
+                .filter(t => !t.bajarildi && t.lat != null && t.lng != null)
+                .sort((a, b) => String(a.nuqta_nomi).localeCompare(String(b.nuqta_nomi)));
+
+            if (!pending.length) { alert("Bajarilmagan nuqtalar yo'q — barcha reja bajarilgan! 🎉"); return; }
+            if (!userLat || !userLng) { alert("Joriy joylashuv hali aniqlanmagan."); return; }
+
+            const coords = [[userLat, userLng], ...pending.map(t => [t.lat, t.lng])];
+            await drawRoute(coords);
+        }
+
+        // Xarita tepasidagi tugma: marshrut yo'q bo'lsa — hammasini ketma-ket quradi; bor bo'lsa — tozalaydi
+        function onRouteButtonClick() {
+            if (activeRouteLine) {
+                clearActiveRoute();
+            } else if (confirm("Barcha bajarilmagan nuqtalarga ketma-ket (A, B, C...) marshrut tuzilsinmi?")) {
+                buildFullRoute();
             }
         }
 
