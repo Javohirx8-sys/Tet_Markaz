@@ -494,7 +494,7 @@
         let map, userMarker, watchId = null;
         let userLat = null, userLng = null, lastSpeedKmh = null;
         let wakeLock = null;
-        let heartbeatInterval = null, tasksInterval = null, chatInterval = null, addressInterval = null, transformerInterval = null;
+        let heartbeatInterval = null, tasksInterval = null, chatInterval = null, addressInterval = null, transformerInterval = null, accountCheckInterval = null;
         let transformerMarkers = [];
         let currentTasks = [];
         let routeOverlayLayers = []; // eski nom, endi ishlatilmaydi (uyg'unlik uchun qoldirilgan)
@@ -541,10 +541,39 @@
                     return;
                 }
                 fillProfileFields();
-                checkGPSPermissionAndProceed();
+                // Ilova ochilishidan oldin, hisob hali ham bazada mavjudligini tekshiramiz
+                // (admin xodimni o'chirib tashlagan bo'lishi mumkin)
+                verifyAccountExists().then(exists => {
+                    if (exists) checkGPSPermissionAndProceed();
+                });
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
             }
+        }
+
+        // Hisob hali ham bazada mavjudligini tekshirish. Agar admin xodimni o'chirib
+        // tashlagan bo'lsa, ilova darhol tizimdan chiqarib, login ekraniga qaytaradi.
+        async function verifyAccountExists() {
+            if (!currentUser) return true;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('xodimlar_gps').select('id').eq('id', currentUser.id).maybeSingle();
+                if (error) return true; // tarmoq xatosi — bu holatda chiqarib yubormaymiz
+                if (!data) { forceLogoutDeleted(); return false; }
+                return true;
+            } catch (e) { return true; }
+        }
+
+        function forceLogoutDeleted() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            [heartbeatInterval, tasksInterval, chatInterval, addressInterval, transformerInterval, accountCheckInterval]
+                .forEach(i => i && clearInterval(i));
+            localStorage.removeItem('tet_user'); sessionStorage.removeItem('tet_user');
+            currentUser = null;
+            document.getElementById('app-shell').style.display = 'none';
+            document.getElementById('gps-request-screen').style.display = 'none';
+            alert("Sizning hisobingiz administrator tomonidan o'chirilgan. Iltimos, qayta tizimga kiring.");
+            document.getElementById('login-screen').style.display = 'flex';
         }
 
         async function tryLogin() {
@@ -596,7 +625,8 @@
         function logout() {
             setOfflineBeacon();
             if (watchId) navigator.geolocation.clearWatch(watchId);
-            [heartbeatInterval, tasksInterval, chatInterval, addressInterval].forEach(i => i && clearInterval(i));
+            [heartbeatInterval, tasksInterval, chatInterval, addressInterval, transformerInterval, accountCheckInterval]
+                .forEach(i => i && clearInterval(i));
             localStorage.removeItem('tet_user'); sessionStorage.removeItem('tet_user');
             location.reload();
         }
@@ -682,6 +712,8 @@
             chatInterval = setInterval(loadChat, 4000);
             addressInterval = setInterval(reverseGeocode, 30000);
             transformerInterval = setInterval(fetchTransformatorlar, 60000);
+            if (accountCheckInterval) clearInterval(accountCheckInterval);
+            accountCheckInterval = setInterval(verifyAccountExists, 20000);
 
             setTimeout(() => map.invalidateSize(), 200);
         }
@@ -732,13 +764,18 @@
             document.getElementById('info-updated').innerText = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
         }
 
-        function checkWriteResult(data, error) {
+        async function checkWriteResult(data, error) {
             if (error) {
                 console.error('Bazaga yozishda xatolik:', error.message);
                 if (!rlsWarningShown) { rlsWarningShown = true; alert("Xatolik: joylashuvni bazaga yozib bo'lmadi.\n\n" + error.message); }
                 return;
             }
             if (!data || data.length === 0) {
+                // 0 qatorga ta'sir qildi — sabab RLS ruxsati yo'qligi yoki hisob o'chirilgani bo'lishi mumkin.
+                // Avval hisob hali mavjudligini tekshiramiz (agar o'chirilgan bo'lsa, shu yerda chiqarib yuboradi).
+                const stillExists = await verifyAccountExists();
+                if (!stillExists) return;
+
                 console.warn('0 qatorga ta\'sir qildi — RLS UPDATE ruxsati yo\'q bo\'lishi mumkin.');
                 if (!rlsWarningShown) { rlsWarningShown = true; alert("Diqqat: joylashuv bazaga yozilmayapti!\n\nSupabase RLS sozlamalarini tekshiring."); }
             }
